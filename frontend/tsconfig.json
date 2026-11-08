@@ -22,8 +22,8 @@
       "@/features/*": ["src/app/features/*"],
       "@/hooks/*": ["src/app/hooks/*"],
       "@/lib/*": ["src/app/lib/*"]
-    }
-  },
+    },
+      },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
