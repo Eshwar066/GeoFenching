@@ -1,0 +1,145 @@
+package alert
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/go-playground/validator/v10"
+	"geofencing-system/internal/geofence"
+	"geofencing-system/internal/location"
+	"geofencing-system/internal/vehicle"
+)
+
+type Service struct {
+	repo            *Repository
+	geofenceService *geofence.Service
+	vehicleService  *vehicle.Service
+	validate        *validator.Validate
+	hub             *Hub
+	eventChan       chan []GeofenceEvent
+}
+
+type GeofenceEvent struct {
+	VehicleID  uuid.UUID
+	GeofenceID uuid.UUID
+	EventType  string
+	Latitude   float64
+	Longitude  float64
+}
+
+func NewService(pool *pgxpool.Pool, geofenceService *geofence.Service, vehicleService *vehicle.Service, hub *Hub) *Service {
+	return &Service{
+		repo:            NewRepository(pool),
+		geofenceService: geofenceService,
+		vehicleService:  vehicleService,
+		validate:        validator.New(),
+		hub:             hub,
+		eventChan:       make(chan []GeofenceEvent, 100),
+	}
+}
+
+func (s *Service) Create(ctx context.Context, req CreateAlertRuleRequest) (*AlertRule, error) {
+	if err := s.validate.Struct(req); err != nil {
+		return nil, fmt.Errorf("validation failed: %w", err)
+	}
+
+	a := &AlertRule{
+		GeofenceID: req.GeofenceID,
+		VehicleID:  req.VehicleID,
+		EventType:  req.EventType,
+		Status:     "active",
+	}
+
+	if err := s.repo.Create(ctx, a); err != nil {
+		return nil, fmt.Errorf("create alert rule: %w", err)
+	}
+
+	return a, nil
+}
+
+func (s *Service) List(ctx context.Context, limit, offset int) ([]*AlertRule, int, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.repo.List(ctx, limit, offset)
+}
+
+func (s *Service) Publish(events []location.GeofenceEvent) {
+	alertEvents := make([]GeofenceEvent, len(events))
+	for i, e := range events {
+		alertEvents[i] = GeofenceEvent{
+			VehicleID:  e.VehicleID,
+			GeofenceID: e.GeofenceID,
+			EventType:  e.EventType,
+			Latitude:   e.Latitude,
+			Longitude:  e.Longitude,
+		}
+	}
+
+	select {
+	case s.eventChan <- alertEvents:
+	default:
+	}
+}
+
+func (s *Service) StartEventProcessor(ctx context.Context) {
+	go func() {
+		for {
+			select {
+			case events := <-s.eventChan:
+				s.processEvents(ctx, events)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+func (s *Service) processEvents(ctx context.Context, events []GeofenceEvent) {
+	for _, e := range events {
+		rules, err := s.repo.GetMatchingRules(ctx, e.GeofenceID, e.VehicleID, e.EventType)
+		if err != nil {
+			continue
+		}
+
+		if len(rules) == 0 {
+			continue
+		}
+
+		v, _ := s.vehicleService.GetByID(ctx, e.VehicleID)
+		vehicleNumber := ""
+		if v != nil {
+			vehicleNumber = v.VehicleNumber
+		}
+
+		g, _ := s.geofenceService.GetByID(ctx, e.GeofenceID)
+		geofenceName := ""
+		if g != nil {
+			geofenceName = g.Name
+		}
+
+		alertMsg := AlertEvent{
+			VehicleID:     e.VehicleID,
+			VehicleNumber: vehicleNumber,
+			GeofenceID:    e.GeofenceID,
+			GeofenceName:  geofenceName,
+			EventType:     e.EventType,
+			Latitude:      e.Latitude,
+			Longitude:     e.Longitude,
+			OccurredAt:    time.Now().Format("2006-01-02T15:04:05Z07:00"),
+		}
+
+		msg := WebSocketMessage{
+			Type: "alert",
+			Data: alertMsg,
+		}
+
+		s.hub.Broadcast(msg)
+	}
+}

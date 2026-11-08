@@ -1,0 +1,633 @@
+For this assessment, I recommend building it in two major stages: Backend first, then Frontend. Don't start with the map UI. First make the Go APIs, database, geofence detection, and WebSocket alerts work independently. Once the backend is stable, connect React to it.
+
+Since this is a full-stack assessment, the goal should be more than making the demo work: you should be able to explain the architecture, data flow, geospatial logic, and design decisions during the 30–45 minute video.
+1. Recommended technology stack
+Backend first
+Go + PostgreSQL + PostGIS
+
+REST APIs, geofence detection, vehicle tracking, alert processing
+
+
+Real-time communication
+
+Gorilla WebSocket for broadcasting entry/exit alerts
+
+
+Frontend — second stage
+
+React + TypeScript + Vite + Tailwind CSS + React Leaflet
+
+
+Infrastructure
+
+Docker, Docker Compose, GitHub, Docker Hub, Render/Railway or another Docker-compatible host, Vercel
+
+
+Layer	Technology	Purpose
+HTTP server	Go net/http or Chi	REST endpoints
+Database	PostgreSQL	Persistent data
+Geospatial	PostGIS	Point-in-polygon queries
+Database access	pgx + sqlc or pgx directly	Queries and persistence
+WebSocket	Gorilla WebSocket	Live alerts
+Validation	Go validation / custom validation	Request validation
+Logging	slog	Structured logs
+Frontend	React + TypeScript	Dashboard
+Maps	Leaflet + React Leaflet	Geofence polygons and vehicle markers
+API state	TanStack Query	Fetching, caching, mutations
+
+Why PostGIS? Geofencing is fundamentally a geospatial problem. PostGIS provides spatial functions and indexing, so you can explain how the system would scale beyond a simple in-memory implementation.
+
+2. High-level system architecture
+This is the architecture I would implement.
+#chatgpt-mermaid-_r_g4_{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:16px;fill:rgb(237, 237, 237);}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#chatgpt-mermaid-_r_g4_ .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-_r_g4_ .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-_r_g4_ .error-icon{fill:rgb(48, 48, 48);}#chatgpt-mermaid-_r_g4_ .error-text{fill:rgb(237, 237, 237);stroke:rgb(237, 237, 237);}#chatgpt-mermaid-_r_g4_ .edge-thickness-normal{stroke-width:1px;}#chatgpt-mermaid-_r_g4_ .edge-thickness-thick{stroke-width:3.5px;}#chatgpt-mermaid-_r_g4_ .edge-pattern-solid{stroke-dasharray:0;}#chatgpt-mermaid-_r_g4_ .edge-thickness-invisible{stroke-width:0;fill:none;}#chatgpt-mermaid-_r_g4_ .edge-pattern-dashed{stroke-dasharray:3;}#chatgpt-mermaid-_r_g4_ .edge-pattern-dotted{stroke-dasharray:2;}#chatgpt-mermaid-_r_g4_ .marker{fill:rgb(175, 175, 175);stroke:rgb(175, 175, 175);}#chatgpt-mermaid-_r_g4_ .marker.cross{stroke:rgb(175, 175, 175);}#chatgpt-mermaid-_r_g4_ svg{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:16px;}#chatgpt-mermaid-_r_g4_ p{margin:0;}#chatgpt-mermaid-_r_g4_ .label{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";color:rgb(237, 237, 237);}#chatgpt-mermaid-_r_g4_ .cluster-label text{fill:rgb(237, 237, 237);}#chatgpt-mermaid-_r_g4_ .cluster-label span{color:rgb(237, 237, 237);}#chatgpt-mermaid-_r_g4_ .cluster-label span p{background-color:transparent;}#chatgpt-mermaid-_r_g4_ .label text,#chatgpt-mermaid-_r_g4_ span{fill:rgb(237, 237, 237);color:rgb(237, 237, 237);}#chatgpt-mermaid-_r_g4_ .node rect,#chatgpt-mermaid-_r_g4_ .node circle,#chatgpt-mermaid-_r_g4_ .node ellipse,#chatgpt-mermaid-_r_g4_ .node polygon,#chatgpt-mermaid-_r_g4_ .node path{fill:rgb(9, 23, 44);stroke:rgb(31, 78, 148);stroke-width:1px;}#chatgpt-mermaid-_r_g4_ .rough-node .label text,#chatgpt-mermaid-_r_g4_ .node .label text,#chatgpt-mermaid-_r_g4_ .image-shape .label,#chatgpt-mermaid-_r_g4_ .icon-shape .label{text-anchor:middle;}#chatgpt-mermaid-_r_g4_ .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#chatgpt-mermaid-_r_g4_ .rough-node .label,#chatgpt-mermaid-_r_g4_ .node .label,#chatgpt-mermaid-_r_g4_ .image-shape .label,#chatgpt-mermaid-_r_g4_ .icon-shape .label{text-align:center;}#chatgpt-mermaid-_r_g4_ .node.clickable{cursor:pointer;}#chatgpt-mermaid-_r_g4_ .root .anchor path{fill:rgb(175, 175, 175)!important;stroke-width:0;stroke:rgb(175, 175, 175);}#chatgpt-mermaid-_r_g4_ .arrowheadPath{fill:rgb(175, 175, 175);}#chatgpt-mermaid-_r_g4_ .edgePath .path{stroke:rgb(175, 175, 175);stroke-width:1px;}#chatgpt-mermaid-_r_g4_ .flowchart-link{stroke:rgb(175, 175, 175);fill:none;}#chatgpt-mermaid-_r_g4_ .edgeLabel{background-color:rgb(0, 0, 0);text-align:center;}#chatgpt-mermaid-_r_g4_ .edgeLabel p{background-color:rgb(0, 0, 0);}#chatgpt-mermaid-_r_g4_ .edgeLabel rect{opacity:0.5;background-color:rgb(0, 0, 0);fill:rgb(0, 0, 0);}#chatgpt-mermaid-_r_g4_ .labelBkg{background-color:rgba(0, 0, 0, 0.5);}#chatgpt-mermaid-_r_g4_ .cluster rect{fill:rgb(48, 48, 48);stroke:rgba(255, 255, 255, 0.15);stroke-width:1px;}#chatgpt-mermaid-_r_g4_ .cluster text{fill:rgb(237, 237, 237);}#chatgpt-mermaid-_r_g4_ .cluster span{color:rgb(237, 237, 237);}#chatgpt-mermaid-_r_g4_ div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:12px;background:rgb(48, 48, 48);border:1px solid rgba(255, 255, 255, 0.15);border-radius:2px;pointer-events:none;z-index:100;}#chatgpt-mermaid-_r_g4_ .flowchartTitleText{text-anchor:middle;font-size:18px;fill:rgb(237, 237, 237);}#chatgpt-mermaid-_r_g4_ rect.text{fill:none;stroke-width:0;}#chatgpt-mermaid-_r_g4_ .icon-shape,#chatgpt-mermaid-_r_g4_ .image-shape{background-color:rgb(0, 0, 0);text-align:center;}#chatgpt-mermaid-_r_g4_ .icon-shape p,#chatgpt-mermaid-_r_g4_ .image-shape p{background-color:rgb(0, 0, 0);padding:2px;}#chatgpt-mermaid-_r_g4_ .icon-shape .label rect,#chatgpt-mermaid-_r_g4_ .image-shape .label rect{opacity:0.5;background-color:rgb(0, 0, 0);fill:rgb(0, 0, 0);}#chatgpt-mermaid-_r_g4_ .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#chatgpt-mermaid-_r_g4_ .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#chatgpt-mermaid-_r_g4_ .node .neo-node{stroke:rgb(31, 78, 148);}#chatgpt-mermaid-_r_g4_ [data-look="neo"].node rect,#chatgpt-mermaid-_r_g4_ [data-look="neo"].cluster rect,#chatgpt-mermaid-_r_g4_ [data-look="neo"].node polygon{stroke:url(#chatgpt-mermaid-_r_g4_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_g4_ [data-look="neo"].swimlane.cluster rect{filter:none;}#chatgpt-mermaid-_r_g4_ [data-look="neo"].node path{stroke:url(#chatgpt-mermaid-_r_g4_-gradient);stroke-width:1px;}#chatgpt-mermaid-_r_g4_ [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_g4_ [data-look="neo"].node .neo-line path{stroke:rgb(31, 78, 148);filter:none;}#chatgpt-mermaid-_r_g4_ [data-look="neo"].node circle{stroke:url(#chatgpt-mermaid-_r_g4_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_g4_ [data-look="neo"].node circle .state-start{fill:#000000;}#chatgpt-mermaid-_r_g4_ [data-look="neo"].icon-shape .icon{fill:url(#chatgpt-mermaid-_r_g4_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_g4_ [data-look="neo"].icon-shape .icon-neo path{stroke:url(#chatgpt-mermaid-_r_g4_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_g4_ .node text{font-size:14px;font-weight:600;letter-spacing:normal;fill:rgb(153, 206, 255);}#chatgpt-mermaid-_r_g4_ .edgeLabels text{font-size:13px;font-weight:600;letter-spacing:-0.08px;fill:rgb(153, 206, 255);}#chatgpt-mermaid-_r_g4_ .node tspan[font-weight="normal"],#chatgpt-mermaid-_r_g4_ .edgeLabels tspan[font-weight="normal"]{font-weight:600;}#chatgpt-mermaid-_r_g4_ .edgeLabel .label rect{opacity:1;rx:13px;ry:13px;fill:rgb(0, 14, 26);stroke:rgb(26, 62, 95);stroke-width:1px;}#chatgpt-mermaid-_r_g4_ .node rect,#chatgpt-mermaid-_r_g4_ .node circle,#chatgpt-mermaid-_r_g4_ .node ellipse,#chatgpt-mermaid-_r_g4_ .node polygon,#chatgpt-mermaid-_r_g4_ .node path{fill:rgb(0, 40, 77);stroke:rgba(255, 255, 255, 0.1);stroke-width:1px;}#chatgpt-mermaid-_r_g4_ .node rect{rx:16px;ry:16px;}#chatgpt-mermaid-_r_g4_ .mermaid-decision .label-container{fill:rgb(0, 14, 26);stroke:rgb(26, 62, 95);stroke-dasharray:2,2;}#chatgpt-mermaid-_r_g4_ .edgePaths .flowchart-link{stroke:rgb(175, 175, 175);stroke-width:1px;stroke-linecap:round;stroke-linejoin:round;}#chatgpt-mermaid-_r_g4_ .marker{fill:rgb(175, 175, 175);stroke:rgb(175, 175, 175);}#chatgpt-mermaid-_r_g4_ :root{--mermaid-font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";}Go BackendReact FrontendREST API RouterMiddleware: Timing / Logging/ CORSGeofence ServiceVehicle ServiceLocation ServiceAlert ServiceWebSocket HubDashboardGeofence ManagementVehicle ManagementAlerts FeedViolation HistoryInteractive MapUser / Fleet OperatorPostgreSQL + PostGISHTTP / JSONWebSocketLive events
+
+
+
+
+
+How the system works
+1. User creates a geofence from the frontend.
+2. React sends coordinates to POST /geofences.
+3. Go validates and saves the polygon in PostgreSQL/PostGIS.
+4. User registers a vehicle.
+5. Vehicle location is updated through POST /vehicles/location.
+6. Go checks which geofences contain the vehicle.
+7. It compares the current geofence membership with the previous membership.
+8. If the vehicle enters or exits a geofence, it creates an event.
+9. The Alert Service checks whether an alert rule matches.
+10. Matching alerts are saved and broadcast through WebSocket.
+11. React receives the event and updates the live alerts feed.
+
+3. Backend architecture — build this first
+I recommend a modular layered architecture rather than putting everything inside main.go or creating too many microservices.
+
+Use these layers:
+- Handler: HTTP request and response.
+- Service: Business logic.
+- Repository: Database operations.
+- Model: Domain structures.
+- Middleware: Common HTTP behavior.
+Backend folder structure
+geofencing-system/
+│
+├── backend/
+│   ├── cmd/
+│   │   └── api/
+│   │       └── main.go
+│   │
+│   ├── internal/
+│   │   ├── config/
+│   │   │   └── config.go
+│   │   │
+│   │   ├── database/
+│   │   │   └── postgres.go
+│   │   │
+│   │   ├── middleware/
+│   │   │   ├── timing.go
+│   │   │   ├── cors.go
+│   │   │   └── logging.go
+│   │   │
+│   │   ├── geofence/
+│   │   │   ├── handler.go
+│   │   │   ├── service.go
+│   │   │   ├── repository.go
+│   │   │   └── model.go
+│   │   │
+│   │   ├── vehicle/
+│   │   │   ├── handler.go
+│   │   │   ├── service.go
+│   │   │   ├── repository.go
+│   │   │   └── model.go
+│   │   │
+│   │   ├── location/
+│   │   │   ├── handler.go
+│   │   │   ├── service.go
+│   │   │   ├── repository.go
+│   │   │   └── model.go
+│   │   │
+│   │   ├── alert/
+│   │   │   ├── handler.go
+│   │   │   ├── service.go
+│   │   │   ├── repository.go
+│   │   │   ├── websocket.go
+│   │   │   └── model.go
+│   │   │
+│   │   └── violation/
+│   │       ├── handler.go
+│   │       ├── service.go
+│   │       ├── repository.go
+│   │       └── model.go
+│   │
+│   ├── migrations/
+│   ├── Dockerfile
+│   ├── go.mod
+│   └── .env.example
+│
+├── frontend/
+│
+├── docker-compose.yml
+├── SETUP.md
+└── README.md
+
+
+The benefit is that each module has its own responsibilities. For example, location/service.go handles location processing but doesn't contain raw HTTP request parsing or SQL query details.
+
+4. Database design
+I would start with six main tables.
+#chatgpt-mermaid-_r_gf_{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:16px;fill:rgb(237, 237, 237);}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#chatgpt-mermaid-_r_gf_ .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-_r_gf_ .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-_r_gf_ .error-icon{fill:rgb(48, 48, 48);}#chatgpt-mermaid-_r_gf_ .error-text{fill:rgb(237, 237, 237);stroke:rgb(237, 237, 237);}#chatgpt-mermaid-_r_gf_ .edge-thickness-normal{stroke-width:1px;}#chatgpt-mermaid-_r_gf_ .edge-thickness-thick{stroke-width:3.5px;}#chatgpt-mermaid-_r_gf_ .edge-pattern-solid{stroke-dasharray:0;}#chatgpt-mermaid-_r_gf_ .edge-thickness-invisible{stroke-width:0;fill:none;}#chatgpt-mermaid-_r_gf_ .edge-pattern-dashed{stroke-dasharray:3;}#chatgpt-mermaid-_r_gf_ .edge-pattern-dotted{stroke-dasharray:2;}#chatgpt-mermaid-_r_gf_ .marker{fill:rgb(175, 175, 175);stroke:rgb(175, 175, 175);}#chatgpt-mermaid-_r_gf_ .marker.cross{stroke:rgb(175, 175, 175);}#chatgpt-mermaid-_r_gf_ svg{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:16px;}#chatgpt-mermaid-_r_gf_ p{margin:0;}#chatgpt-mermaid-_r_gf_ .entityBox{fill:rgb(9, 23, 44);stroke:rgb(31, 78, 148);}#chatgpt-mermaid-_r_gf_ .relationshipLabelBox{fill:rgb(48, 48, 48);opacity:0.7;background-color:rgb(48, 48, 48);}#chatgpt-mermaid-_r_gf_ .relationshipLabelBox rect{opacity:0.5;}#chatgpt-mermaid-_r_gf_ .labelBkg{background-color:rgba(48, 48, 48, 0.5);}#chatgpt-mermaid-_r_gf_ .edgeLabel{background-color:rgb(0, 0, 0);}#chatgpt-mermaid-_r_gf_ .edgeLabel .label rect{fill:rgb(0, 0, 0);}#chatgpt-mermaid-_r_gf_ .edgeLabel .label text{fill:rgb(237, 237, 237);}#chatgpt-mermaid-_r_gf_ .edgeLabel .label{fill:rgb(31, 78, 148);font-size:14px;}#chatgpt-mermaid-_r_gf_ .label{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";color:rgb(237, 237, 237);}#chatgpt-mermaid-_r_gf_ .edge-pattern-dashed{stroke-dasharray:8,8;}#chatgpt-mermaid-_r_gf_ .node rect,#chatgpt-mermaid-_r_gf_ .node circle,#chatgpt-mermaid-_r_gf_ .node ellipse,#chatgpt-mermaid-_r_gf_ .node polygon{fill:rgb(9, 23, 44);stroke:rgb(31, 78, 148);stroke-width:1px;}#chatgpt-mermaid-_r_gf_ .relationshipLine{stroke:rgb(175, 175, 175);stroke-width:1px;fill:none;}#chatgpt-mermaid-_r_gf_ .marker{fill:none!important;stroke:rgb(175, 175, 175)!important;stroke-width:1;}#chatgpt-mermaid-_r_gf_ [data-look=neo].labelBkg{background-color:rgba(48, 48, 48, 0.5);}#chatgpt-mermaid-_r_gf_ .node .neo-node{stroke:rgb(31, 78, 148);}#chatgpt-mermaid-_r_gf_ [data-look="neo"].node rect,#chatgpt-mermaid-_r_gf_ [data-look="neo"].cluster rect,#chatgpt-mermaid-_r_gf_ [data-look="neo"].node polygon{stroke:url(#chatgpt-mermaid-_r_gf_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_gf_ [data-look="neo"].swimlane.cluster rect{filter:none;}#chatgpt-mermaid-_r_gf_ [data-look="neo"].node path{stroke:url(#chatgpt-mermaid-_r_gf_-gradient);stroke-width:1px;}#chatgpt-mermaid-_r_gf_ [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_gf_ [data-look="neo"].node .neo-line path{stroke:rgb(31, 78, 148);filter:none;}#chatgpt-mermaid-_r_gf_ [data-look="neo"].node circle{stroke:url(#chatgpt-mermaid-_r_gf_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_gf_ [data-look="neo"].node circle .state-start{fill:#000000;}#chatgpt-mermaid-_r_gf_ [data-look="neo"].icon-shape .icon{fill:url(#chatgpt-mermaid-_r_gf_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_gf_ [data-look="neo"].icon-shape .icon-neo path{stroke:url(#chatgpt-mermaid-_r_gf_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-_r_gf_ :root{--mermaid-font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";}GEOFENCESuuididPKvarcharnametextdescriptiongeometrypolygonvarcharcategorytimestampcreated_atALERT_RULESuuididPKuuidgeofence_idFKuuidvehicle_idFKvarcharevent_typevarcharstatusVEHICLESuuididPKvarcharvehicle_numberUKvarchardriver_namevarcharvehicle_typevarcharphonevarcharstatustimestampcreated_atVEHICLE_LOCATIONSuuididPKuuidvehicle_idFKgeometrypointtimestamprecorded_atGEOFENCE_EVENTSuuididPKuuidvehicle_idFKuuidgeofence_idFKvarcharevent_typegeometrylocationtimestampoccurred_atVEHICLE_GEOFENCE_STATESuuidvehicle_idFKuuidgeofence_idFKbooleanis_insidetimestampupdated_athasmonitored_byproducesgeneratesrecordshastracks
+
+
+
+
+
+What each table does
+Table	Responsibility
+geofences	Stores polygon boundaries
+vehicles	Stores vehicle information
+vehicle_locations	Stores location history
+vehicle_geofence_states	Tracks whether a vehicle is currently inside a geofence
+alert_rules	Stores configured entry/exit rules
+geofence_events	Stores historical entry/exit events
+
+Important: Keep vehicle_geofence_states. This table makes detecting entry and exit events much easier and avoids comparing every historical location.
+
+For optional vehicle-specific alert rules, use vehicle_id = NULL to represent a rule applicable to all vehicles.
+Geospatial coordinate handling
+Your API accepts:
+{
+  "latitude": 37.7849,
+  "longitude": -122.4194
+}
+
+
+But PostGIS points use longitude first, latitude second:
+ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+
+
+For a polygon, use the same coordinate convention consistently. Your API uses [latitude, longitude], while GeoJSON uses [longitude, latitude]. Convert explicitly at the API/database boundary.
+
+Use a spatial index:
+CREATE INDEX idx_geofences_polygon
+ON geofences
+USING GIST (boundary);
+
+
+For point-in-polygon:
+SELECT id, name, category
+FROM geofences
+WHERE ST_Covers(
+    boundary,
+    ST_SetSRID(ST_MakePoint($1, $2), 4326)
+);
+
+
+ST_Covers includes points on the polygon boundary, which is a useful choice for geofencing.
+
+5. Most important part: Geofence detection logic
+This is the core of your assessment. Make sure you understand it well enough to explain it without looking at the code.
+
+Suppose you have:
+Geofence A: Downtown
+Geofence B: Restricted Area
+
+Vehicle: KA-01-AB-1234
+
+
+The vehicle sends location updates:
+Update	Location	Downtown	Restricted
+1	Outside both	Outside	Outside
+2	Inside Downtown	Inside	Outside
+3	Inside both	Inside	Inside
+4	Outside Downtown, inside Restricted	Outside	Inside
+5	Outside both	Outside	Outside
+
+Your backend must detect transitions, not just whether a vehicle is currently inside.
+The algorithm
+For each location update:
+1. Fetch the vehicle's previous geofence state.
+2. Find all geofences containing the new location.
+3. Compare previous and current membership.
+4. Detect entry and exit events.
+5. Save the new state.
+6. Save generated events.
+7. Match events against alert configurations.
+8. Broadcast matching alerts.
+The comparison can be expressed as:
+entered = currentGeofences - previousGeofences;
+
+exited = previousGeofences - currentGeofences;
+
+
+For example:
+previous = ["geo_1", "geo_2"];
+current  = ["geo_2", "geo_3"];
+
+entered = ["geo_3"];
+exited  = ["geo_1"];
+
+
+This is the heart of the application.
+Suggested Go service flow
+func (s *LocationService) UpdateLocation(
+    ctx context.Context,
+    req UpdateLocationRequest,
+) (*LocationResponse, error) {
+
+    // 1. Validate vehicle and coordinates
+
+    // 2. Begin database transaction
+
+    // 3. Get previous geofence membership
+
+    // 4. Find geofences containing current location
+
+    // 5. Calculate entered and exited geofences
+
+    // 6. Save location history
+
+    // 7. Save new geofence membership
+
+    // 8. Create entry/exit events
+
+    // 9. Find matching alert rules
+
+    // 10. Save matching alerts
+
+    // 11. Commit transaction
+
+    // 12. Publish alerts asynchronously
+
+    // 13. Return current geofence status
+
+    return response, nil
+}
+
+
+This is a conceptual outline; we'll implement it incrementally.
+
+Important design decision: Save the location, membership changes, and generated events in a single database transaction. Publish WebSocket notifications only after the transaction commits. This prevents clients receiving alerts for events that were not successfully persisted.
+
+For a stronger production design, use a transactional outbox table and a background publisher. For the assessment, a buffered Go channel and WebSocket hub are a reasonable starting point.
+
+6. API implementation order
+Do not implement all nine endpoints simultaneously. Build them in dependency order.
+Phase	Endpoint	Purpose
+1	POST /geofences	Create geofence
+1	GET /geofences	List and filter geofences
+2	POST /vehicles	Register vehicle
+2	GET /vehicles	List vehicles
+3	POST /vehicles/location	Update location and detect events
+3	GET /vehicles/location/{vehicle_id}	Retrieve current location and geofence state
+4	POST /alerts/configure	Configure alert rules
+4	GET /alerts	List configured rules
+5	GET /violations/history	Retrieve historical events
+
+Implement the WebSocket endpoint /ws/alerts alongside Phase 4, but create its connection hub early so the location service can publish to it.
+Standard API response timing
+The assessment requires time_ns in every API response.
+
+Create a common response helper or response envelope:
+type APIResponse struct {
+    Data   any    `json:"data,omitempty"`
+    Error  string `json:"error,omitempty"`
+    TimeNS string `json:"time_ns"`
+}
+
+
+However, the examples expect fields such as id, name, and status at the top level. So don't blindly wrap everything in data.
+
+Instead, use a helper that adds time_ns to each response's existing JSON structure.
+
+Conceptually:
+start := time.Now()
+
+// Process request
+
+elapsed := time.Since(start).Nanoseconds()
+
+response["time_ns"] = strconv.FormatInt(elapsed, 10)
+
+
+Measure from the start of the handler to just before writing the response. Include time_ns in error responses too. Make sure the final JSON field names and response shapes match the assessment exactly.
+
+7. Backend development roadmap
+I would work through the following milestones.
+Backend milestones
+1. Milestone 1 — Project setup
+   Foundation
+   - Initialize Go module.
+   - Set up router and configuration.
+   - Connect PostgreSQL.
+   - Add migrations.
+   - Add Docker Compose.
+   - Add health endpoint for development.
+     
+     Deliverable: Go server starts and connects to PostgreSQL.
+2. Milestone 2 — Geofence CRUD
+   - Create geofence model.
+   - Validate polygon coordinates.
+   - Save polygons using PostGIS.
+   - Implement category filtering.
+   - Test with Postman/curl.
+     
+     Deliverable: Geofences can be created and listed.
+3. Milestone 3 — Vehicle CRUD
+   - Create vehicle model.
+   - Validate required fields.
+   - Enforce unique vehicle numbers.
+   - Implement registration and listing.
+     
+     Deliverable: Vehicles can be registered and retrieved.
+4. Milestone 4 — Location tracking
+   Core business logic
+   - Store location history.
+   - Implement point-in-polygon detection.
+   - Track current membership.
+   - Detect entry and exit transitions.
+   - Implement current location endpoint.
+     
+     Deliverable: Vehicle movement correctly produces geofence events.
+5. Milestone 5 — Alerts and WebSocket
+   - Create alert configuration endpoints.
+   - Implement alert matching.
+   - Build WebSocket hub.
+   - Support multiple clients and disconnects.
+   - Persist alerts and broadcast asynchronously.
+     
+     Deliverable: Connected clients receive live entry/exit alerts.
+6. Milestone 6 — Violation history
+   - Implement filters.
+   - Add date-range validation.
+   - Add pagination/limit.
+   - Return total count.
+     
+     Deliverable: Historical events are queryable.
+7. Milestone 7 — Backend hardening
+   - Unit and integration tests.
+   - Request validation and error handling.
+   - Logging and timing middleware.
+   - Rate limiting for location updates.
+   - Docker image build.
+     
+     Deliverable: Stable, testable backend.
+
+8. Frontend architecture — start after backend APIs work
+Once the backend is tested, create the React application.
+
+Suggested folder structure:
+frontend/
+├── src/
+│   ├── app/
+│   │   ├── App.tsx
+│   │   └── router.tsx
+│   │
+│   ├── components/
+│   │   ├── layout/
+│   │   ├── ui/
+│   │   └── map/
+│   │
+│   ├── features/
+│   │   ├── dashboard/
+│   │   ├── geofences/
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   └── api.ts
+│   │   ├── vehicles/
+│   │   ├── locations/
+│   │   ├── alerts/
+│   │   └── violations/
+│   │
+│   ├── hooks/
+│   ├── lib/
+│   │   ├── api-client.ts
+│   │   └── websocket.ts
+│   │
+│   ├── types/
+│   ├── utils/
+│   └── main.tsx
+│
+├── package.json
+└── vite.config.ts
+
+
+Dashboard screens
+Suggested application layout
+Dashboard
+
+Vehicle count, active geofences, recent alerts
+
+
+Live Map
+
+Vehicle markers and geofence polygons
+
+
+Geofences
+
+Create, edit, filter and view zones
+
+
+Vehicles
+
+Register and monitor vehicles
+
+
+Live Alerts
+
+Entry/exit notifications
+
+
+History
+
+Filter and inspect past events
+
+
+
+
+Frontend implementation order
+1. Set up Vite, React, TypeScript and Tailwind.
+2. Create application layout and navigation.
+3. Integrate geofence listing and creation.
+4. Integrate vehicle registration and listing.
+5. Integrate location updates.
+6. Add Leaflet map with polygons and markers.
+7. Add alert configuration.
+8. Connect WebSocket and implement live notifications.
+9. Add violation history with filters and pagination.
+10. Add loading, empty, error and responsive states.
+I recommend building the map after basic CRUD screens. That way, you can validate the backend without debugging map interactions at the same time.
+
+9. Testing strategy
+Before moving from backend to frontend, test the most important scenario end-to-end.
+
+Use this example:
+
+Create a geofence
+{
+  "name": "Restricted Zone",
+  "description": "Test restricted area",
+  "coordinates": [
+    [12.9710, 77.5900],
+    [12.9810, 77.5900],
+    [12.9810, 77.6000],
+    [12.9710, 77.6000],
+    [12.9710, 77.5900]
+  ],
+  "category": "restricted_zone"
+}
+
+
+Register a vehicle
+{
+  "vehicle_number": "KA-01-AB-1234",
+  "driver_name": "John Doe",
+  "vehicle_type": "truck",
+  "phone": "+919876543210"
+}
+
+
+Configure an alert
+{
+  "geofence_id": "geo_123",
+  "vehicle_id": "veh_456",
+  "event_type": "both"
+}
+
+
+Send a location outside the geofence
+{
+  "vehicle_id": "veh_456",
+  "latitude": 12.9650,
+  "longitude": 77.5850,
+  "timestamp": "2026-11-07T10:00:00Z"
+}
+
+
+Send a location inside the geofence
+{
+  "vehicle_id": "veh_456",
+  "latitude": 12.9750,
+  "longitude": 77.5950,
+  "timestamp": "2026-11-07T10:01:00Z"
+}
+
+
+Expected behavior:
+- The first update should not generate an entry event.
+- The second update should generate exactly one entry event.
+- A connected WebSocket client should receive the alert.
+- Violation history should contain that event.
+- The current location endpoint should show the vehicle inside the restricted zone.
+Then send another location outside the zone and verify that an exit event is generated.
+
+Also test duplicate location updates, overlapping polygons, boundary points, unknown vehicle IDs, invalid polygons, and alert rules for all vehicles.
+
+10. Docker and deployment
+Your root docker-compose.yml should initially run:
+docker-compose
+    |
+    |-- backend (Go API)
+    |
+    |-- postgres (PostgreSQL + PostGIS)
+
+
+Later, add the frontend if you want to run the entire application locally through Docker.
+
+Example:
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: geouser
+      POSTGRES_PASSWORD: geopassword
+      POSTGRES_DB: geofencing
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+
+
+For production, add database health checks, persistent secrets, migrations, and proper service readiness handling. Don't use the example database password in a public deployment.
+
+Deployment sequence:
+1. Push backend source to a private GitHub repository.
+2. Build and push backend image to Docker Hub.
+3. Deploy backend and PostgreSQL/PostGIS.
+4. Configure production environment variables.
+5. Deploy React frontend to Vercel.
+6. Configure frontend API and WebSocket URLs.
+7. Test the deployed application end-to-end.
+11. Common mistakes to avoid
+These are particularly important for this assessment:
+Mistake	Better approach
+Checking only the current location	Compare previous and current geofence membership
+Sending alerts for every location update	Send only on entry/exit transitions
+Broadcasting before database commit	Persist first, broadcast after commit
+Saving only current location	Maintain location history
+Ignoring overlapping geofences	Check all matching geofences
+Using latitude/longitude in the wrong order	Convert API coordinates correctly
+Treating a missing vehicle ID as a global alert rule	Use NULL for all-vehicle rules
+Returning different response formats	Follow the specified JSON shapes consistently
+Forgetting time_ns on error responses	Include timing on every HTTP response
+Broadcasting synchronously to every socket	Use a buffered event channel and connection hub
+
+One more important detail: WebSocket clients can disconnect or be slow. A slow client must not block all other clients. Give each connection its own buffered send channel and handle failed writes by disconnecting that client.
+12. Suggested project timeline
+For a focused implementation, I'd plan approximately 10–14 working days. This assumes you can spend a few hours each day; allow more time if Go and PostGIS are new to you.
+Days	Focus	Milestone
+1–2	Go setup, database, migrations, geofence CRUD	Geofence APIs
+3	Vehicle CRUD	Vehicle APIs
+4–5	Location tracking and geospatial detection	Entry/exit logic
+6	Alert rules and WebSocket	Live alerts
+7	Violation history, testing, error handling	Complete backend
+8	React setup and dashboard	Frontend foundation
+9–10	CRUD screens and map	Map integration
+11	WebSocket and live notifications	Real-time UI
+12	History, filters and polish	Complete frontend
+13–14	Docker, deployment, documentation and video	Submission
+
+13. Final submission checklist
+- [ ] All nine REST endpoints match the required paths and methods.
+- [ ] Every HTTP response includes time_ns.
+- [ ] Point-in-polygon detection works.
+- [ ] Entry and exit events are detected correctly.
+- [ ] Alert configurations support vehicle-specific and all-vehicle rules.
+- [ ] WebSocket supports multiple clients.
+- [ ] Historical events are stored and filterable.
+- [ ] React dashboard integrates with all APIs.
+- [ ] Map displays geofences and vehicles.
+- [ ] Docker Compose starts the local system.
+- [ ] Backend Docker image is pushed to Docker Hub.
+- [ ] Backend and frontend are deployed.
+- [ ] SETUP.md contains setup and testing instructions.
+- [ ] Private GitHub repository has all requested collaborators.
+- [ ] 30–45 minute technical walkthrough is recorded.
+- [ ] Assessment Google Form is submitted.
+
+My recommendation: start with the backend foundation
+Don't try to write all the code at once. Build each module, test it, and move to the next.
+
+Your first coding milestone should be:
+1. Create the GitHub repository.
+2. Create the backend folder.
+3. Initialize the Go module.
+4. Set up PostgreSQL/PostGIS with Docker Compose.
+5. Connect Go to PostgreSQL.
+6. Create the first database migration for geofences.
+Once that works, start POST /geofences and GET /geofences.
+
+This will give you a solid foundation before tackling the more challenging location and real-time logic.
+
+I can guide you through implementing this project step by step, starting with the Go backend setup and database connection.
