@@ -10,7 +10,10 @@
 
 ### 1. Start PostgreSQL with PostGIS
 
+
 ```bash
+eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+
 docker-compose up -d postgres
 ```
 

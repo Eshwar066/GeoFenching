@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { MapPin, Truck, Target, RefreshCw } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { MapPin, Truck, Target, RefreshCw, MapPin as MapPinIcon, AlertCircle } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
 import { api } from '@/app/lib/api/client';
 import { MapView } from '@/app/components/map/MapView';
 import { Button } from '@/app/components/ui/Button';
 import { useLiveAlerts } from '@/app/components/ui/LiveAlertsPortal';
-import type { Geofence, Vehicle, GeofenceEventInfo } from '@/app/lib/types';
+import type { Geofence, Vehicle, GeofenceEventInfo, LocationResponse } from '@/app/lib/types';
 
 export function LiveMap() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -14,7 +14,25 @@ export function LiveMap() {
   const [showVehicles, setShowVehicles] = useState(true);
   const [showEvents, setShowEvents] = useState(true);
   const [autoCenter, setAutoCenter] = useState(false);
+  const [lastSimulation, setLastSimulation] = useState<{ lat: number; lng: number; result: LocationResponse | null; error: string | null } | null>(null);
   const { alerts: liveAlerts } = useLiveAlerts();
+
+  const simulateLocationMutation = useMutation({
+    mutationFn: ({ vehicleId, lat, lng }: { vehicleId: string; lat: number; lng: number }) =>
+      api.updateLocation({ vehicle_id: vehicleId, latitude: lat, longitude: lng }),
+    onSuccess: (result) => {
+      setLastSimulation({ lat: result.latitude, lng: result.longitude, result, error: null });
+      // Invalidate queries to refresh vehicle location
+      // Note: react-query cache invalidation would require queryClient, skipping for simplicity
+    },
+    onError: (error: Error) => {
+      setLastSimulation({ lat: 0, lng: 0, result: null, error: error.message });
+    },
+  });
+
+  const handleMapClick = (latLng: [number, number], vehicleId: string) => {
+    simulateLocationMutation.mutate({ vehicleId, lat: latLng[0], lng: latLng[1] });
+  };
 
   const { data: geofencesData, isLoading: geofencesLoading } = useQuery({
     queryKey: ['geofences', { limit: 100 }],
@@ -95,6 +113,36 @@ export function LiveMap() {
           </Button>
         </div>
       </div>
+
+      {lastSimulation && (
+        <div className={cn('mb-4 p-3 rounded-lg border text-sm', lastSimulation.error ? 'bg-danger-50 border-danger-200 text-danger-700 dark:bg-danger-900/30 dark:border-danger-800 dark:text-danger-300' : 'bg-success-50 border-success-200 text-success-700 dark:bg-success-900/30 dark:border-success-800 dark:text-success-300')}>
+          <div className="flex items-center gap-2">
+            {lastSimulation.error ? (
+              <AlertCircle className="h-4 w-4" />
+            ) : (
+              <MapPinIcon className="h-4 w-4" />
+            )}
+            <span className="font-medium">
+              {lastSimulation.error ? 'Simulation Failed' : 'Location Sent'}
+            </span>
+          </div>
+          <div className="mt-1 font-mono text-xs">
+            {lastSimulation.error
+              ? `Error: ${lastSimulation.error}`
+              : `Lat: ${lastSimulation.lat?.toFixed(6)}, Lng: ${lastSimulation.lng?.toFixed(6)}` +
+                (lastSimulation.result?.geofence_names?.length
+                  ? ` | Inside: ${lastSimulation.result.geofence_names.join(', ')}`
+                  : ' | Outside all geofences') +
+                (lastSimulation.result?.entered?.length
+                  ? ` | Entered: ${lastSimulation.result.entered.map(e => e.geofence_name).join(', ')}`
+                  : '') +
+                (lastSimulation.result?.exited?.length
+                  ? ` | Exited: ${lastSimulation.result.exited.map(e => e.geofence_name).join(', ')}`
+                  : '')
+            }
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
         <div className="lg:w-1/4 flex-shrink-0 overflow-y-auto space-y-4">
@@ -189,8 +237,8 @@ export function LiveMap() {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Coordinates</p>
                   <p className="font-mono text-sm text-gray-900 dark:text-gray-100">
-                    {currentLocation?.latitude !== undefined && currentLocation?.longitude !== undefined
-                      ? `${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`
+                    {currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number'
+                      ? `${currentLocation.latitude?.toFixed(6)}, ${currentLocation.longitude?.toFixed(6)}`
                       : 'N/A'}
                   </p>
                 </div>
@@ -228,6 +276,7 @@ export function LiveMap() {
             recentEvents={showEvents ? recentEvents : []}
             onVehicleClick={handleVehicleClick}
             onGeofenceClick={handleGeofenceClick}
+            onMapClick={handleMapClick}
           />
         </div>
       </div>

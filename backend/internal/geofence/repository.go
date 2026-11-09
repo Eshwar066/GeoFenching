@@ -145,7 +145,8 @@ func coordsToWKT(coords [][2]float64) string {
 		if i > 0 {
 			wkt += ", "
 		}
-		wkt += fmt.Sprintf("%.8f %.8f", c[0], c[1])
+		// PostGIS expects (longitude, latitude) order in WKT
+		wkt += fmt.Sprintf("%.8f %.8f", c[1], c[0])
 	}
 	wkt += "))"
 	return wkt
@@ -160,8 +161,9 @@ func parseBoundary(boundary string) [][]float64 {
 	matches := re.FindAllStringSubmatch(boundary, -1)
 	for _, match := range matches {
 		if len(match) == 3 {
-			lat, _ := strconv.ParseFloat(match[1], 64)
-			lng, _ := strconv.ParseFloat(match[2], 64)
+			// WKT stores coordinates as (longitude, latitude)
+			lng, _ := strconv.ParseFloat(match[1], 64)
+			lat, _ := strconv.ParseFloat(match[2], 64)
 			coords = append(coords, []float64{lat, lng})
 		}
 	}

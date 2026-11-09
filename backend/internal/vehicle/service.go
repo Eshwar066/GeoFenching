@@ -74,3 +74,7 @@ func (s *Service) UpdateStatus(ctx context.Context, id uuid.UUID, status string)
 	}
 	return s.repo.UpdateStatus(ctx, id, status)
 }
+
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	return s.repo.Delete(ctx, id)
+}

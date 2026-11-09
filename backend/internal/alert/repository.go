@@ -2,6 +2,7 @@ package alert
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -96,4 +97,16 @@ func (r *Repository) GetMatchingRules(ctx context.Context, geofenceID uuid.UUID,
 		rules = append(rules, &a)
 	}
 	return rules, rows.Err()
+}
+
+func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM alert_rules WHERE id = $1`
+	result, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("alert rule not found")
+	}
+	return nil
 }

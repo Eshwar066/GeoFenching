@@ -1,9 +1,30 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Polygon, Marker, Popup, CircleMarker } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Marker, Popup, CircleMarker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
 import type { Geofence, Vehicle, CurrentLocationResponse, GeofenceEventInfo } from '@/app/lib/types';
+
+function MapClickHandler({ selectedVehicle, onMapClick, setSimulateLocation }: {
+  selectedVehicle: Vehicle | undefined | null;
+  onMapClick: ((latLng: [number, number], vehicleId: string) => void) | undefined;
+  setSimulateLocation: (loc: [number, number] | null) => void;
+}) {
+  useMapEvents({
+    click: (e: L.LeafletMouseEvent) => {
+      if (!selectedVehicle || !onMapClick) return;
+      const latLng = e.latlng;
+      setSimulateLocation([latLng.lat, latLng.lng]);
+
+      if (window.confirm(`Send location update for ${selectedVehicle.vehicle_number} to ${latLng.lat.toFixed(6)}, ${latLng.lng.toFixed(6)}?`)) {
+        onMapClick([latLng.lat, latLng.lng], selectedVehicle.id);
+      }
+      setSimulateLocation(null);
+    },
+  });
+
+  return null;
+}
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -22,6 +43,7 @@ interface MapViewProps {
   zoom?: number;
   onVehicleClick?: (vehicle: Vehicle) => void;
   onGeofenceClick?: (geofence: Geofence) => void;
+  onMapClick?: (latLng: [number, number], vehicleId: string) => void;
 }
 
 const DEFAULT_CENTER: [number, number] = [12.9716, 77.5946];
@@ -238,11 +260,13 @@ export function MapView({
   zoom = DEFAULT_ZOOM,
   onVehicleClick,
   onGeofenceClick,
+  onMapClick,
 }: MapViewProps) {
   const mapRef = useRef<L.Map | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>(center);
   const [mapZoom, setMapZoom] = useState(zoom);
   const [selectedGeofenceId, setSelectedGeofenceId] = useState<string | null>(null);
+  const [simulateLocation, setSimulateLocation] = useState<[number, number] | null>(null);
 
   const bounds = useMemo(() => {
     const allCoords: [number, number][] = [];
@@ -253,8 +277,9 @@ export function MapView({
         allCoords.push([loc.latitude, loc.longitude]);
       }
     });
+    if (simulateLocation) allCoords.push(simulateLocation);
     return allCoords.length > 0 ? allCoords : null;
-  }, [geofences, vehicles, selectedVehicle, currentLocation]);
+  }, [geofences, vehicles, selectedVehicle, currentLocation, simulateLocation]);
 
   useEffect(() => {
     if (bounds && mapRef.current) {
@@ -280,6 +305,11 @@ export function MapView({
         whenReady={handleMapReady}
         className="h-full w-full"
       >
+        <MapClickHandler
+          selectedVehicle={selectedVehicle || null}
+          onMapClick={onMapClick}
+          setSimulateLocation={setSimulateLocation}
+        />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -295,7 +325,22 @@ export function MapView({
           />
         ))}
         {recentEvents.length > 0 && <EventMarkers events={recentEvents} geofences={geofences} />}
+        {simulateLocation && (
+          <Marker position={simulateLocation} icon={L.divIcon({
+            className: 'flex items-center justify-center w-8 h-8 rounded-full bg-yellow-400 border-2 border-yellow-600 animate-pulse',
+            html: '<span class="text-white text-xs">📍</span>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+          })} />
+        )}
       </MapContainer>
+      {selectedVehicle && onMapClick && (
+        <div className="absolute bottom-4 left-4 right-4 lg:left-auto lg:right-4 lg:bottom-4 lg:w-64 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 shadow-lg pointer-events-none">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Click on map to simulate location for <strong>{selectedVehicle.vehicle_number}</strong>
+          </p>
+        </div>
+      )}
     </div>
   );
 }

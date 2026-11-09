@@ -23,6 +23,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/vehicles", h.List)
 	r.Get("/vehicles/{id}", h.GetByID)
 	r.Patch("/vehicles/{id}/status", h.UpdateStatus)
+	r.Delete("/vehicles/{id}", h.Delete)
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
@@ -111,4 +112,21 @@ func (h *Handler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	middleware.WriteSuccess(w, r, map[string]string{"status": "updated"})
+}
+
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		middleware.WriteError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := h.service.Delete(ctx, id); err != nil {
+		middleware.WriteError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	middleware.WriteSuccess(w, r, map[string]string{"message": "vehicle deleted"})
 }

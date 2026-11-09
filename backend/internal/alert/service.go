@@ -70,6 +70,10 @@ func (s *Service) List(ctx context.Context, limit, offset int) ([]*AlertRule, in
 	return s.repo.List(ctx, limit, offset)
 }
 
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	return s.repo.Delete(ctx, id)
+}
+
 func (s *Service) Publish(events []location.GeofenceEvent) {
 	alertEvents := make([]GeofenceEvent, len(events))
 	for i, e := range events {

@@ -2,6 +2,7 @@ package vehicle
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -91,4 +92,16 @@ func (r *Repository) UpdateStatus(ctx context.Context, id uuid.UUID, status stri
 	query := `UPDATE vehicles SET status = $1 WHERE id = $2`
 	_, err := r.pool.Exec(ctx, query, status, id)
 	return err
+}
+
+func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM vehicles WHERE id = $1`
+	result, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("vehicle not found")
+	}
+	return nil
 }

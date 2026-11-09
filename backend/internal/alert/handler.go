@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"geofencing-system/internal/middleware"
 )
 
@@ -19,6 +20,7 @@ func NewHandler(service *Service, hub *Hub) *Handler {
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/alerts/configure", h.Create)
 	r.Get("/alerts", h.List)
+	r.Delete("/alerts/{id}", h.Delete)
 	r.Get("/ws/alerts", h.HandleWebSocket)
 }
 
@@ -65,4 +67,21 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	h.hub.HandleWebSocket(w, r)
+}
+
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		middleware.WriteError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := h.service.Delete(ctx, id); err != nil {
+		middleware.WriteError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	middleware.WriteSuccess(w, r, map[string]string{"message": "alert rule deleted"})
 }
