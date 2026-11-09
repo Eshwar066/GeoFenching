@@ -64,11 +64,13 @@ function GeofenceLayer({
   onClick,
   selectedId,
   onSelect,
+  selectedVehicle,
 }: {
   geofences: Geofence[];
   onClick?: (g: Geofence) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  selectedVehicle?: Vehicle | null;
 }) {
   return (
     <>
@@ -76,6 +78,7 @@ function GeofenceLayer({
         const isSelected = geofence.id === selectedId;
         const colors = isSelected ? primaryColors : (categoryColors[geofence.category] || categoryColors.general);
         const latLngs = geofence.coordinates.map(([lat, lng]) => [lat, lng] as [number, number]);
+        const isSimulationMode = selectedVehicle !== null;
         return (
           <>
             <Polygon
@@ -89,56 +92,63 @@ function GeofenceLayer({
                 dashArray: isSelected ? undefined : '5, 5',
               }}
               eventHandlers={{
-                click: () => {
-                  onSelect(geofence.id);
-                  onClick?.(geofence);
+                click: (e: L.LeafletMouseEvent) => {
+                  if (!isSimulationMode) {
+                    e.originalEvent?.stopPropagation();
+                    onSelect(geofence.id);
+                    onClick?.(geofence);
+                  }
                 },
               }}
             >
-              <Popup className={isSelected ? 'leaflet-popup-primary' : ''}>
-                <div className="p-2 min-w-[200px]">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">{geofence.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{geofence.category.replace('_', ' ')}</p>
-                  {geofence.description && (
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{geofence.description}</p>
-                  )}
-                </div>
-              </Popup>
+              {!isSimulationMode && (
+                <Popup className={isSelected ? 'leaflet-popup-primary' : ''}>
+                  <div className="p-2 min-w-[200px]">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">{geofence.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{geofence.category.replace('_', ' ')}</p>
+                    {geofence.description && (
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{geofence.description}</p>
+                    )}
+                  </div>
+                </Popup>
+              )}
             </Polygon>
-            <style>{`
-              .leaflet-popup-primary .leaflet-popup-content-wrapper {
-                background: #dbeafe;
-                border: 2px solid #2563eb;
-                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
-              }
-              .leaflet-popup-primary .leaflet-popup-tip {
-                background: #dbeafe;
-                border: 2px solid #2563eb;
-                border-top: none;
-                border-left: none;
-              }
-              .leaflet-popup-primary .leaflet-popup-close-button {
-                color: #2563eb;
-              }
-              .leaflet-popup-primary .leaflet-popup-close-button:hover {
-                color: #1d4ed8;
-              }
-              :global(.dark) .leaflet-popup-primary .leaflet-popup-content-wrapper {
-                background: #1e3a5f;
-                border-color: #3b82f6;
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-              }
-              :global(.dark) .leaflet-popup-primary .leaflet-popup-tip {
-                background: #1e3a5f;
-                border-color: #3b82f6;
-              }
-              :global(.dark) .leaflet-popup-primary .leaflet-popup-close-button {
-                color: #60a5fa;
-              }
-              :global(.dark) .leaflet-popup-primary .leaflet-popup-close-button:hover {
-                color: #93c5fd;
-              }
-            `}</style>
+            {!isSimulationMode && (
+              <style>{`
+                .leaflet-popup-primary .leaflet-popup-content-wrapper {
+                  background: #dbeafe;
+                  border: 2px solid #2563eb;
+                  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+                }
+                .leaflet-popup-primary .leaflet-popup-tip {
+                  background: #dbeafe;
+                  border: 2px solid #2563eb;
+                  border-top: none;
+                  border-left: none;
+                }
+                .leaflet-popup-primary .leaflet-popup-close-button {
+                  color: #2563eb;
+                }
+                .leaflet-popup-primary .leaflet-popup-close-button:hover {
+                  color: #1d4ed8;
+                }
+                :global(.dark) .leaflet-popup-primary .leaflet-popup-content-wrapper {
+                  background: #1e3a5f;
+                  border-color: #3b82f6;
+                  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                }
+                :global(.dark) .leaflet-popup-primary .leaflet-popup-tip {
+                  background: #1e3a5f;
+                  border-color: #3b82f6;
+                }
+                :global(.dark) .leaflet-popup-primary .leaflet-popup-close-button {
+                  color: #60a5fa;
+                }
+                :global(.dark) .leaflet-popup-primary .leaflet-popup-close-button:hover {
+                  color: #93c5fd;
+                }
+              `}</style>
+            )}
           </>
         );
       })}
@@ -314,7 +324,7 @@ export function MapView({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <GeofenceLayer geofences={geofences} onClick={onGeofenceClick} selectedId={selectedGeofenceId} onSelect={setSelectedGeofenceId} />
+        <GeofenceLayer geofences={geofences} onClick={onGeofenceClick} selectedId={selectedGeofenceId} onSelect={setSelectedGeofenceId} selectedVehicle={selectedVehicle || undefined} />
         {vehicles.map((vehicle) => (
           <VehicleMarker
             key={vehicle.id}

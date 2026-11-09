@@ -41,28 +41,30 @@ export async function getGeofences(params?: { category?: string; limit?: number;
   if (params?.limit) search.set('limit', params.limit.toString());
   if (params?.offset) search.set('offset', params.offset.toString());
   const query = search.toString() ? `?${search.toString()}` : '';
-  const response = await fetchJson<{ data: { geofences: Geofence[]; limit: number; offset: number }; time_ns: string }>(`${API_BASE}/geofences${query}`);
+  const response = await fetchJson<{ data: { geofences: Geofence[]; limit: number; offset: number; total: number }; time_ns: string }>(`${API_BASE}/geofences${query}`);
   return {
     data: response.data.geofences,
-    total: response.data.geofences.length,
+    total: response.data.total,
     limit: response.data.limit,
     offset: response.data.offset,
   };
 }
 
 export async function createGeofence(data: CreateGeofenceRequest): Promise<Geofence> {
-  return fetchJson(`${API_BASE}/geofences`, {
+  const response = await fetchJson<{ data: Geofence; time_ns: string }>(`${API_BASE}/geofences`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  return response.data;
 }
 
 export async function getGeofence(id: string): Promise<Geofence> {
-  return fetchJson(`${API_BASE}/geofences/${id}`);
+  const response = await fetchJson<{ data: Geofence; time_ns: string }>(`${API_BASE}/geofences/${id}`);
+  return response.data;
 }
 
 export async function deleteGeofence(id: string): Promise<void> {
-  return fetchJson(`${API_BASE}/geofences/${id}`, { method: 'DELETE' });
+  await fetchJson(`${API_BASE}/geofences/${id}`, { method: 'DELETE' });
 }
 
 // Vehicles
@@ -81,37 +83,42 @@ export async function getVehicles(params?: { limit?: number; offset?: number }):
 }
 
 export async function createVehicle(data: CreateVehicleRequest): Promise<Vehicle> {
-  return fetchJson(`${API_BASE}/vehicles`, {
+  const response = await fetchJson<{ data: Vehicle; time_ns: string }>(`${API_BASE}/vehicles`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  return response.data;
 }
 
 export async function getVehicle(id: string): Promise<Vehicle> {
-  return fetchJson(`${API_BASE}/vehicles/${id}`);
+  const response = await fetchJson<{ data: Vehicle; time_ns: string }>(`${API_BASE}/vehicles/${id}`);
+  return response.data;
 }
 
 export async function updateVehicleStatus(id: string, data: UpdateVehicleStatusRequest): Promise<{ status: string }> {
-  return fetchJson(`${API_BASE}/vehicles/${id}/status`, {
+  const response = await fetchJson<{ data: { status: string }; time_ns: string }>(`${API_BASE}/vehicles/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+  return response.data;
 }
 
 export async function deleteVehicle(id: string): Promise<void> {
-  return fetchJson(`${API_BASE}/vehicles/${id}`, { method: 'DELETE' });
+  await fetchJson(`${API_BASE}/vehicles/${id}`, { method: 'DELETE' });
 }
 
 // Location
 export async function updateLocation(data: LocationUpdateRequest): Promise<LocationResponse> {
-  return fetchJson(`${API_BASE}/vehicles/location`, {
+  const response = await fetchJson<{ data: LocationResponse; time_ns: string }>(`${API_BASE}/vehicles/location`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  return response.data;
 }
 
 export async function getCurrentLocation(vehicleId: string): Promise<CurrentLocationResponse> {
-  return fetchJson(`${API_BASE}/vehicles/location/${vehicleId}`);
+  const response = await fetchJson<{ data: CurrentLocationResponse; time_ns: string }>(`${API_BASE}/vehicles/location/${vehicleId}`);
+  return response.data;
 }
 
 // Alerts
@@ -126,14 +133,15 @@ export async function getAlertRules(): Promise<PaginatedResponse<AlertRule>> {
 }
 
 export async function createAlertRule(data: CreateAlertRuleRequest): Promise<AlertRule> {
-  return fetchJson(`${API_BASE}/alerts/configure`, {
+  const response = await fetchJson<{ data: AlertRule; time_ns: string }>(`${API_BASE}/alerts/configure`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  return response.data;
 }
 
 export async function deleteAlertRule(id: string): Promise<void> {
-  return fetchJson(`${API_BASE}/alerts/${id}`, { method: 'DELETE' });
+  await fetchJson(`${API_BASE}/alerts/${id}`, { method: 'DELETE' });
 }
 
 // Violations
@@ -157,7 +165,8 @@ export async function getViolations(filters: ViolationFilters): Promise<Paginate
 
 // Health
 export async function checkHealth(): Promise<{ status: string }> {
-  return fetchJson(`${API_BASE}/health`);
+  const response = await fetchJson<{ data: { status: string }; time_ns: string }>(`${API_BASE}/health`);
+  return response.data;
 }
 
 // Export all as api object for convenience

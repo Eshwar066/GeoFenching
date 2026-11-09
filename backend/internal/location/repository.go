@@ -33,7 +33,7 @@ func (r *Repository) SaveLocation(ctx context.Context, vehicleID uuid.UUID, long
 
 func (r *Repository) GetCurrentLocation(ctx context.Context, vehicleID uuid.UUID) (*VehicleLocation, error) {
 	query := `
-		SELECT id, vehicle_id, ST_AsText(location), recorded_at
+		SELECT id, vehicle_id, ST_X(location) as longitude, ST_Y(location) as latitude, recorded_at
 		FROM vehicle_locations
 		WHERE vehicle_id = $1
 		ORDER BY recorded_at DESC
@@ -41,7 +41,7 @@ func (r *Repository) GetCurrentLocation(ctx context.Context, vehicleID uuid.UUID
 	`
 	var loc VehicleLocation
 	err := r.pool.QueryRow(ctx, query, vehicleID).Scan(
-		&loc.ID, &loc.VehicleID, &loc.Location, &loc.RecordedAt,
+		&loc.ID, &loc.VehicleID, &loc.Longitude, &loc.Latitude, &loc.RecordedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, nil

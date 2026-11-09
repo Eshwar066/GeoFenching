@@ -115,7 +115,7 @@ export function LiveMap() {
       </div>
 
       {lastSimulation && (
-        <div className={cn('mb-4 p-3 rounded-lg border text-sm', lastSimulation.error ? 'bg-danger-50 border-danger-200 text-danger-700 dark:bg-danger-900/30 dark:border-danger-800 dark:text-danger-300' : 'bg-success-50 border-success-200 text-success-700 dark:bg-success-900/30 dark:border-success-800 dark:text-success-300')}>
+        <div className={cn('mb-4 p-3 rounded-lg border text-sm', lastSimulation.error ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-300' : 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300')}>
           <div className="flex items-center gap-2">
             {lastSimulation.error ? (
               <AlertCircle className="h-4 w-4" />
