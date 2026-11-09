@@ -3,6 +3,7 @@ package alert
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,6 +76,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *Service) Publish(events []location.GeofenceEvent) {
+	slog.Info("AlertService.Publish called", "event_count", len(events))
 	alertEvents := make([]GeofenceEvent, len(events))
 	for i, e := range events {
 		alertEvents[i] = GeofenceEvent{
@@ -88,7 +90,9 @@ func (s *Service) Publish(events []location.GeofenceEvent) {
 
 	select {
 	case s.eventChan <- alertEvents:
+		slog.Info("Published to eventChan", "count", len(alertEvents))
 	default:
+		slog.Warn("Alert channel full, dropping events", "count", len(alertEvents))
 	}
 }
 
@@ -106,6 +110,7 @@ func (s *Service) StartEventProcessor(ctx context.Context) {
 }
 
 func (s *Service) processEvents(ctx context.Context, events []GeofenceEvent) {
+	slog.Info("Processing events", "count", len(events))
 	for _, e := range events {
 		rules, err := s.repo.GetMatchingRules(ctx, e.GeofenceID, e.VehicleID, e.EventType)
 		if err != nil {
@@ -124,19 +129,24 @@ func (s *Service) processEvents(ctx context.Context, events []GeofenceEvent) {
 
 		g, _ := s.geofenceService.GetByID(ctx, e.GeofenceID)
 		geofenceName := ""
+		category := ""
 		if g != nil {
 			geofenceName = g.Name
+			category = g.Category
 		}
 
 		alertMsg := AlertEvent{
+			ID:           uuid.New(),
 			VehicleID:     e.VehicleID,
 			VehicleNumber: vehicleNumber,
 			GeofenceID:    e.GeofenceID,
 			GeofenceName:  geofenceName,
 			EventType:     e.EventType,
+			Category:      category,
+			Severity:      "medium",
 			Latitude:      e.Latitude,
 			Longitude:     e.Longitude,
-			OccurredAt:    time.Now().Format("2006-01-02T15:04:05Z07:00"),
+			Timestamp:     time.Now().Format("2006-01-02T15:04:05Z07:00"),
 		}
 
 		msg := WebSocketMessage{

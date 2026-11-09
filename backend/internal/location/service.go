@@ -3,6 +3,7 @@ package location
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -122,7 +123,9 @@ func (s *Service) UpdateLocation(ctx context.Context, req UpdateLocationRequest)
 		return nil, fmt.Errorf("save events: %w", err)
 	}
 
+	slog.Info("Location update - events to save", "count", len(eventsToSave), "publisher", s.eventPublisher != nil)
 	if len(eventsToSave) > 0 && s.eventPublisher != nil {
+		slog.Info("Publishing events to alert service", "count", len(eventsToSave))
 		go s.eventPublisher.Publish(eventsToSave)
 	}
 

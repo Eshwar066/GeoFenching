@@ -80,6 +80,13 @@ func (r *Repository) UpdateGeofenceStates(ctx context.Context, vehicleID uuid.UU
 	}
 	defer tx.Rollback(ctx)
 
+	// First, get all previous states to find geofences that are no longer in currentGeofences
+	previousStates, err := r.GetGeofenceStates(ctx, vehicleID)
+	if err != nil {
+		return err
+	}
+
+	// Update/insert current geofences
 	for geofenceID, isInside := range currentGeofences {
 		query := `
 			INSERT INTO vehicle_geofence_states (vehicle_id, geofence_id, is_inside, updated_at)
@@ -90,6 +97,20 @@ func (r *Repository) UpdateGeofenceStates(ctx context.Context, vehicleID uuid.UU
 		`
 		if _, err := tx.Exec(ctx, query, vehicleID, geofenceID, isInside); err != nil {
 			return err
+		}
+	}
+
+	// Set is_inside = false for geofences that were previously inside but are no longer in currentGeofences
+	for geofenceID, wasInside := range previousStates {
+		if wasInside && !currentGeofences[geofenceID] {
+			query := `
+				UPDATE vehicle_geofence_states
+				SET is_inside = false, updated_at = NOW()
+				WHERE vehicle_id = $1 AND geofence_id = $2
+			`
+			if _, err := tx.Exec(ctx, query, vehicleID, geofenceID); err != nil {
+				return err
+			}
 		}
 	}
 

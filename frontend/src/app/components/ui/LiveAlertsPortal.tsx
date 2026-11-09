@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, X, MapPin, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
@@ -252,6 +252,9 @@ export function LiveAlertsPortal({
 
 export function useLiveAlerts() {
   const [alerts, setAlerts] = useState<LiveAlert[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isConnectingRef = useRef(false);
 
   const addAlert = (payload: WebSocketAlert['payload']) => {
     const newAlert: LiveAlert = {
@@ -266,6 +269,75 @@ export function useLiveAlerts() {
     };
     setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
   };
+
+  const connect = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN || isConnectingRef.current) {
+      return;
+    }
+
+    isConnectingRef.current = true;
+    // Use the same host as the current page for WebSocket
+    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/alerts`;
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('WebSocket connected to', wsUrl);
+        isConnectingRef.current = false;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'alert' && data.payload) {
+            addAlert(data.payload);
+          }
+        } catch (err) {
+          console.error('Failed to parse WebSocket message:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, reconnecting in 5s...');
+        isConnectingRef.current = false;
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connect();
+        }, 5000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        isConnectingRef.current = false;
+      };
+    } catch (err) {
+      console.error('Failed to create WebSocket:', err);
+      isConnectingRef.current = false;
+    }
+  }, [addAlert]);
+
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+  }, []);
+
+  // Connect on mount, disconnect on unmount
+  useEffect(() => {
+    connect();
+    return () => {
+      disconnect();
+    };
+  }, [connect, disconnect]);
 
   const acknowledge = (id: string) => {
     setAlerts((prev) =>
@@ -285,5 +357,7 @@ export function useLiveAlerts() {
     acknowledge,
     dismiss,
     clearAll,
+    connect,
+    disconnect,
   };
 }

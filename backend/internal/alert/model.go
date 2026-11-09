@@ -47,9 +47,11 @@ type AlertEvent struct {
 	GeofenceID   uuid.UUID `json:"geofence_id"`
 	GeofenceName string    `json:"geofence_name"`
 	EventType    string    `json:"event_type"`
+	Category     string    `json:"category"`
+	Severity     string    `json:"severity"`
 	Latitude     float64   `json:"latitude"`
 	Longitude    float64   `json:"longitude"`
-	OccurredAt   string    `json:"occurred_at"`
+	Timestamp    string    `json:"timestamp"`
 }
 
 type WebSocketMessage struct {
