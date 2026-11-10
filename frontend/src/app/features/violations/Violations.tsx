@@ -102,7 +102,7 @@ export function Violations() {
               onChange={(v) => handleFilterChange('vehicle_id', v || undefined)}
               options={[{ value: '', label: 'All Vehicles' }, ...vehicles.map(v => ({ value: v.id, label: `${v.vehicle_number} - ${v.driver_name}` }))]}
               placeholder="All vehicles"
-              className="sm:col-span-2 lg:col-span-2 xl:col-span-1"
+              className="sm:col-span-2 lg:col-span-2 xl:col-span-2"
             />
             <Select
               label="Geofence"
