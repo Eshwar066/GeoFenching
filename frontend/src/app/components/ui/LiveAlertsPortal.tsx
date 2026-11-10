@@ -1,12 +1,13 @@
 import { Fragment, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, X, MapPin, AlertTriangle, Info } from 'lucide-react';
+import { Bell, X, MapPin, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
 import type { WebSocketAlert } from '@/app/lib/types';
 
 interface LiveAlert {
   id: string;
   vehicleNumber: string;
+  geofenceId: string;
   geofenceName: string;
   eventType: 'entry' | 'exit';
   category: string;
@@ -25,18 +26,10 @@ interface LiveAlertsPortalProps {
   triggerRef?: React.RefObject<HTMLButtonElement>;
 }
 
-const severityColors = {
-  critical: 'bg-primary-50 border-primary-200 text-primary-800 dark:bg-primary-900/30 dark:border-primary-700',
-  high: 'bg-primary-50 border-primary-200 text-primary-800 dark:bg-primary-900/30 dark:border-primary-700',
-  medium: 'bg-primary-50 border-primary-200 text-primary-800 dark:bg-primary-900/30 dark:border-primary-700',
-  low: 'bg-primary-50 border-primary-200 text-primary-800 dark:bg-primary-900/30 dark:border-primary-700',
-};
-
-const severityIcons = {
-  critical: AlertTriangle,
-  high: AlertTriangle,
-  medium: AlertTriangle,
-  low: Info,
+// Primary theme colors for consistent UI
+const primaryColors = {
+  bg: 'bg-primary-50 border-primary-200 text-primary-800 dark:bg-primary-900/30 dark:border-primary-700',
+  bgAcknowledged: 'opacity-60',
 };
 
 function LiveAlertItem({
@@ -48,55 +41,59 @@ function LiveAlertItem({
   onAcknowledge: (id: string) => void;
   onDismiss: (id: string) => void;
 }) {
-  const Icon = severityIcons[alert.severity as keyof typeof severityIcons] || AlertTriangle;
   const isEntry = alert.eventType === 'entry';
+  // Show danger icon for restricted/danger zones on entry, check circle for safe zones
+  const isDangerZone = alert.category === 'restricted_zone' || alert.category === 'danger_zone';
+  const EventIcon = isEntry && isDangerZone ? AlertTriangle : (isEntry ? CheckCircle : AlertTriangle);
 
   return (
     <div
       className={cn(
         'flex items-start gap-3 p-3 rounded-lg border shadow-sm animate-slide-down',
-        severityColors[alert.severity as keyof typeof severityColors] || severityColors.low,
-        alert.acknowledged && 'opacity-60'
+        primaryColors.bg,
+        alert.acknowledged && primaryColors.bgAcknowledged
       )}
       role="alert"
       aria-live="polite"
     >
       <div className="flex-shrink-0 mt-0.5">
-        <Icon className="h-5 w-5" />
+        <EventIcon className="h-5 w-5 text-primary-600" />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{alert.vehicleNumber}</span>
-          <span className="px-1.5 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300">
-            {isEntry ? 'ENTERED' : 'EXITED'}
-          </span>
-          <span className="px-1.5 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300">
-            {alert.category}
-          </span>
+        <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-start">
+          <span className="font-medium text-sm whitespace-nowrap truncate max-w-[180px]">{alert.vehicleNumber}</span>
+          <div className="hidden sm:flex items-center gap-1.5">
+            <span className="px-1.5 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300 whitespace-nowrap">
+              {isEntry ? 'ENTERED' : 'EXITED'}
+            </span>
+            <span className="px-1.5 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300 whitespace-nowrap">
+              {alert.category}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {!alert.acknowledged && (
+              <button
+                onClick={() => onAcknowledge(alert.id)}
+                className="px-2 py-1 text-xs font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded transition-colors whitespace-nowrap"
+              >
+                Acknowledge
+              </button>
+            )}
+            <button
+              onClick={() => onDismiss(alert.id)}
+              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 truncate">
           <MapPin className="inline h-3 w-3 mr-1" /> {alert.geofenceName}
         </p>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
           {new Date(alert.timestamp).toLocaleTimeString()}
         </p>
-      </div>
-      <div className="flex items-center gap-1">
-        {!alert.acknowledged && (
-          <button
-            onClick={() => onAcknowledge(alert.id)}
-            className="px-2 py-1 text-xs font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded transition-colors"
-          >
-            Acknowledge
-          </button>
-        )}
-        <button
-          onClick={() => onDismiss(alert.id)}
-          className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-          aria-label="Dismiss"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
     </div>
   );
@@ -260,6 +257,7 @@ export function useLiveAlerts() {
     const newAlert: LiveAlert = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       vehicleNumber: payload.vehicle_number,
+      geofenceId: payload.geofence_id,
       geofenceName: payload.geofence_name,
       eventType: payload.event_type,
       category: payload.category,
@@ -291,7 +289,9 @@ export function useLiveAlerts() {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
           if (data.type === 'alert' && data.payload) {
+            console.log('Alert payload:', data.payload);
             addAlert(data.payload);
           }
         } catch (err) {

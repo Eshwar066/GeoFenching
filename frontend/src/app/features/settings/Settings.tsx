@@ -153,19 +153,19 @@ export function Settings() {
               <Select
                 label="Theme"
                 value={settings.theme}
-                onChange={(e) => handleChange('theme', e.target.value as 'light' | 'dark' | 'system')}
+                onChange={(v) => handleChange('theme', v as 'light' | 'dark' | 'system')}
                 options={themeOptions}
               />
               <Select
                 label="Auto Refresh Interval"
-                value={settings.autoRefreshInterval}
-                onChange={(e) => handleChange('autoRefreshInterval', parseInt(e.target.value))}
+                value={settings.autoRefreshInterval.toString()}
+                onChange={(v) => handleChange('autoRefreshInterval', parseInt(v))}
                 options={intervalOptions.map(o => ({ value: o.value.toString(), label: o.label }))}
               />
               <Select
                 label="Default Map Zoom"
-                value={settings.mapDefaultZoom}
-                onChange={(e) => handleChange('mapDefaultZoom', parseInt(e.target.value))}
+                value={settings.mapDefaultZoom.toString()}
+                onChange={(v) => handleChange('mapDefaultZoom', parseInt(v))}
                 options={zoomOptions.map(o => ({ value: o.value.toString(), label: o.label }))}
               />
             </div>

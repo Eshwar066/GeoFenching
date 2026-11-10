@@ -3,6 +3,8 @@ package violation
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,6 +16,18 @@ type Repository struct {
 
 func NewRepository(pool *pgxpool.Pool) *Repository {
 	return &Repository{pool: pool}
+}
+
+func parsePostGISPoint(point string) (float64, float64) {
+	// PostGIS returns POINT(longitude latitude) format
+	re := regexp.MustCompile(`POINT\(([0-9.-]+)\s+([0-9.-]+)\)`)
+	matches := re.FindStringSubmatch(point)
+	if len(matches) == 3 {
+		lng, _ := strconv.ParseFloat(matches[1], 64)
+		lat, _ := strconv.ParseFloat(matches[2], 64)
+		return lat, lng
+	}
+	return 0, 0
 }
 
 func (r *Repository) List(ctx context.Context, filters ViolationFilters) ([]*ViolationEvent, int, error) {
@@ -104,7 +118,7 @@ func (r *Repository) List(ctx context.Context, filters ViolationFilters) ([]*Vio
 			return nil, 0, err
 		}
 		if e.Location != "" {
-			e.Latitude, e.Longitude = 0, 0
+			e.Latitude, e.Longitude = parsePostGISPoint(e.Location)
 		}
 		events = append(events, &e)
 	}

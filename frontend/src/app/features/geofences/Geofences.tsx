@@ -74,7 +74,7 @@ function GeofenceForm({ geofence, onSubmit, onClose }: { geofence?: Geofence; on
       <Select
         label="Category"
         value={category}
-        onChange={(e) => setCategory(e.target.value as GeofenceCategory)}
+        onChange={(v) => setCategory(v as GeofenceCategory)}
         options={categoryOptions}
         required
       />
@@ -168,7 +168,7 @@ export function Geofences() {
 
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 max-w-md sm:max-w-lg">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
@@ -180,10 +180,10 @@ export function Geofences() {
             </div>
             <Select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={setCategoryFilter}
               options={[{ value: '', label: 'All Categories' }, ...categoryOptions]}
               placeholder="Filter by category"
-              className="w-full sm:w-48"
+              className="w-full sm:w-40"
             />
           </div>
 

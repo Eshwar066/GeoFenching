@@ -95,44 +95,47 @@ export function Violations() {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-          <Select
-            label="Vehicle"
-            value={filters.vehicle_id || ''}
-            onChange={(e) => handleFilterChange('vehicle_id', e.target.value || undefined)}
-            options={[{ value: '', label: 'All Vehicles' }, ...vehicles.map(v => ({ value: v.id, label: `${v.vehicle_number} - ${v.driver_name}` }))]}
-            placeholder="All vehicles"
-          />
-          <Select
-            label="Geofence"
-            value={filters.geofence_id || ''}
-            onChange={(e) => handleFilterChange('geofence_id', e.target.value || undefined)}
-            options={[{ value: '', label: 'All Geofences' }, ...geofences.map(g => ({ value: g.id, label: g.name }))]}
-            placeholder="All geofences"
-          />
-          <Select
-            label="Event Type"
-            value={filters.event_type || ''}
-            onChange={(e) => handleFilterChange('event_type', e.target.value || undefined)}
-            options={[{ value: '', label: 'All Types' }, ...eventTypeOptions]}
-            placeholder="All types"
-          />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <Select
+              label="Vehicle"
+              value={filters.vehicle_id || ''}
+              onChange={(v) => handleFilterChange('vehicle_id', v || undefined)}
+              options={[{ value: '', label: 'All Vehicles' }, ...vehicles.map(v => ({ value: v.id, label: `${v.vehicle_number} - ${v.driver_name}` }))]}
+              placeholder="All vehicles"
+              className="sm:col-span-2 lg:col-span-2 xl:col-span-1"
+            />
+            <Select
+              label="Geofence"
+              value={filters.geofence_id || ''}
+              onChange={(v) => handleFilterChange('geofence_id', v || undefined)}
+              options={[{ value: '', label: 'All Geofences' }, ...geofences.map(g => ({ value: g.id, label: g.name }))]}
+              placeholder="All geofences"
+              className="sm:col-span-2 lg:col-span-2 xl:col-span-1"
+            />
+            <Select
+              label="Event Type"
+              value={filters.event_type || ''}
+              onChange={(v) => handleFilterChange('event_type', v || undefined)}
+              options={[{ value: '', label: 'All Types' }, ...eventTypeOptions]}
+              placeholder="All types"
+              className="sm:col-span-1 lg:col-span-1 xl:col-span-1"
+            />
             <Input
               label="Start Date"
               type="date"
               value={filters.start_date || ''}
               onChange={(e) => handleFilterChange('start_date', e.target.value || undefined)}
+              className="sm:col-span-1 lg:col-span-1 xl:col-span-1"
             />
             <Input
               label="End Date"
               type="date"
               value={filters.end_date || ''}
               onChange={(e) => handleFilterChange('end_date', e.target.value || undefined)}
+              className="sm:col-span-1 lg:col-span-1 xl:col-span-1"
             />
           </div>
         </div>
-      </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
         {isLoading ? (

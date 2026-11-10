@@ -61,7 +61,7 @@ function AlertRuleForm({
       <Select
         label="Geofence"
         value={geofence_id}
-        onChange={(e) => setGeofenceId(e.target.value)}
+        onChange={setGeofenceId}
         options={[{ value: '', label: 'Select geofence' }, ...geofences.map(g => ({ value: g.id, label: g.name }))]}
         error={errors.geofence_id}
         required
@@ -69,21 +69,21 @@ function AlertRuleForm({
       <Select
         label="Vehicle (optional - leave empty for all vehicles)"
         value={vehicle_id}
-        onChange={(e) => setVehicleId(e.target.value)}
+        onChange={setVehicleId}
         options={[{ value: '', label: 'All Vehicles' }, ...vehicles.map(v => ({ value: v.id, label: `${v.vehicle_number} - ${v.driver_name}` }))]}
         placeholder="All vehicles"
       />
       <Select
         label="Event Type"
         value={event_type}
-        onChange={(e) => setEventType(e.target.value as 'entry' | 'exit' | 'both')}
+        onChange={(v) => setEventType(v as 'entry' | 'exit' | 'both')}
         options={eventTypeOptions}
         required
       />
       <Select
         label="Severity"
         value={severity}
-        onChange={(e) => setSeverity(e.target.value as 'low' | 'medium' | 'high' | 'critical')}
+        onChange={(v) => setSeverity(v as 'low' | 'medium' | 'high' | 'critical')}
         options={severityOptions}
         required
       />
@@ -210,7 +210,7 @@ export function Alerts() {
           <div className="lg:col-span-2">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1 max-w-md">
+                <div className="relative flex-1 max-w-md sm:max-w-lg">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
@@ -311,24 +311,21 @@ export function Alerts() {
                   {liveAlerts.slice(0, 10).map(alert => (
                     <div
                       key={alert.id}
-                      className={cn(
-                        'p-3 rounded-lg border',
-                        alert.severity === 'critical' || alert.severity === 'high'
-                          ? 'bg-danger-50 border-danger-200 dark:bg-danger-900/20 dark:border-danger-800'
-                          : alert.severity === 'medium'
-                          ? 'bg-warning-50 border-warning-200 dark:bg-warning-900/20 dark:border-warning-800'
-                          : 'bg-primary-50 border-primary-200 dark:bg-primary-900/20 dark:border-primary-800'
-                      )}
+                      className="p-3 rounded-lg border bg-primary-50 border-primary-200 dark:bg-primary-900/20 dark:border-primary-800"
                     >
                       <div className="flex items-start gap-2">
-                        <div className={cn('p-1.5 rounded', alert.eventType === 'entry' ? 'bg-success-100' : 'bg-danger-100')}>
-                          {alert.eventType === 'entry' ? <CheckCircle className="h-4 w-4 text-success-600" /> : <AlertTriangle className="h-4 w-4 text-danger-600" />}
+                        <div className="p-1.5 rounded bg-primary-100 dark:bg-primary-800/50">
+                          {(() => {
+                            const isEntry = alert.eventType === 'entry';
+                            const isDangerZone = alert.category === 'restricted_zone' || alert.category === 'danger_zone';
+                            return isEntry && isDangerZone ? <AlertTriangle className="h-4 w-4 text-primary-600" /> : (isEntry ? <CheckCircle className="h-4 w-4 text-primary-600" /> : <AlertTriangle className="h-4 w-4 text-primary-600" />);
+                          })()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-gray-900 dark:text-gray-100">{alert.vehicleNumber}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">{alert.geofenceName} • {alert.eventType}</p>
                         </div>
-                        <span className={cn('px-1.5 py-0.5 text-xs rounded-full', severityColors[alert.severity as keyof typeof severityColors])}>
+                        <span className="px-1.5 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300">
                           {alert.severity}
                         </span>
                       </div>

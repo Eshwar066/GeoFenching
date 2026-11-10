@@ -71,7 +71,7 @@ function VehicleForm({ vehicle, onSubmit, onClose }: { vehicle?: Vehicle; onSubm
       <Select
         label="Vehicle Type"
         value={vehicle_type}
-        onChange={(e) => setVehicleType(e.target.value as VehicleType)}
+        onChange={(v) => setVehicleType(v as VehicleType)}
         options={vehicleTypeOptions}
         required
       />
@@ -182,7 +182,7 @@ export function Vehicles() {
 
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 max-w-md sm:max-w-lg">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
@@ -194,10 +194,10 @@ export function Vehicles() {
             </div>
             <Select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={setStatusFilter}
               options={[{ value: '', label: 'All Status' }, ...statusOptions]}
               placeholder="Filter by status"
-              className="w-full sm:w-48"
+              className="w-full sm:w-40"
             />
           </div>
 
@@ -239,20 +239,12 @@ export function Vehicles() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{v.phone}</td>
                       <td className="px-4 py-3">
-                        <select
+                        <Select
                           value={v.status}
-                          onChange={(e) => handleStatusChange(v.id, e.target.value as VehicleStatus)}
-                          className={cn(
-                            'px-2 py-1 text-xs font-medium rounded-full border',
-                            v.status === 'active' && 'bg-primary-100 text-primary-700 border-primary-200',
-                            v.status === 'inactive' && 'bg-gray-100 text-gray-700 border-gray-200',
-                            v.status === 'maintenance' && 'bg-primary-100 text-primary-700 border-primary-200'
-                          )}
-                        >
-                          {statusOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
+                          onChange={(status) => handleStatusChange(v.id, status as VehicleStatus)}
+                          options={statusOptions}
+                          className="w-32"
+                        />
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                         {new Date(v.created_at).toLocaleDateString()}

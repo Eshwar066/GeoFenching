@@ -21,7 +21,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     try {
-      const wsUrl = `ws://${window.location.host}/ws/alerts`;
+      const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/alerts`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -35,8 +35,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       ws.onmessage = (event) => {
         try {
           const message: WebSocketAlert = JSON.parse(event.data);
+          console.log('[WebSocket] Message received:', message);
           setLastMessage(message);
           if (message.type === 'alert') {
+            console.log('[WebSocket] Alert payload:', message.payload);
             options.onAlert?.(message.payload);
           }
         } catch (err) {

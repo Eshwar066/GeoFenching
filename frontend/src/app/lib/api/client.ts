@@ -123,12 +123,12 @@ export async function getCurrentLocation(vehicleId: string): Promise<CurrentLoca
 
 // Alerts
 export async function getAlertRules(): Promise<PaginatedResponse<AlertRule>> {
-  const response = await fetchJson<{ data: { alert_rules: AlertRule[] }; time_ns: string }>(`${API_BASE}/alerts`);
+  const response = await fetchJson<{ data: { alert_rules: AlertRule[]; total: number; limit: number; offset: number }; time_ns: string }>(`${API_BASE}/alerts`);
   return {
     data: response.data.alert_rules,
-    total: response.data.alert_rules.length,
-    limit: 100,
-    offset: 0,
+    total: response.data.total,
+    limit: response.data.limit,
+    offset: response.data.offset,
   };
 }
 

@@ -6,37 +6,45 @@ import (
 )
 
 type AlertRule struct {
-	ID         uuid.UUID       `json:"id"`
-	GeofenceID uuid.UUID       `json:"geofence_id"`
-	VehicleID  *uuid.UUID      `json:"vehicle_id,omitempty"`
-	EventType  string          `json:"event_type"`
-	Status     string          `json:"status"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ID                  uuid.UUID       `json:"id"`
+	GeofenceID          uuid.UUID       `json:"geofence_id"`
+	VehicleID           *uuid.UUID      `json:"vehicle_id,omitempty"`
+	EventType           string          `json:"event_type"`
+	Severity            string          `json:"severity"`
+	NotifyViaWebsocket  bool            `json:"notify_via_websocket"`
+	Status              string          `json:"status"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 }
 
 type CreateAlertRuleRequest struct {
-	GeofenceID uuid.UUID  `json:"geofence_id" validate:"required"`
-	VehicleID  *uuid.UUID `json:"vehicle_id,omitempty"`
-	EventType  string     `json:"event_type" validate:"required,oneof=entry exit both"`
+	GeofenceID            uuid.UUID  `json:"geofence_id" validate:"required"`
+	VehicleID             *uuid.UUID `json:"vehicle_id,omitempty"`
+	EventType             string     `json:"event_type" validate:"required,oneof=entry exit both"`
+	Severity              string     `json:"severity,omitempty" validate:"omitempty,oneof=low medium high critical"`
+	NotifyViaWebsocket    bool       `json:"notify_via_websocket,omitempty"`
 }
 
 type AlertRuleResponse struct {
-	ID         uuid.UUID  `json:"id"`
-	GeofenceID uuid.UUID  `json:"geofence_id"`
-	VehicleID  *uuid.UUID `json:"vehicle_id,omitempty"`
-	EventType  string     `json:"event_type"`
-	Status     string     `json:"status"`
-	CreatedAt  string     `json:"created_at"`
+	ID                  uuid.UUID  `json:"id"`
+	GeofenceID          uuid.UUID  `json:"geofence_id"`
+	VehicleID           *uuid.UUID `json:"vehicle_id,omitempty"`
+	EventType           string     `json:"event_type"`
+	Severity            string     `json:"severity"`
+	NotifyViaWebsocket  bool       `json:"notify_via_websocket"`
+	Status              string     `json:"status"`
+	CreatedAt           string     `json:"created_at"`
 }
 
 func (a *AlertRule) ToResponse() AlertRuleResponse {
 	return AlertRuleResponse{
-		ID:         a.ID,
-		GeofenceID: a.GeofenceID,
-		VehicleID:  a.VehicleID,
-		EventType:  a.EventType,
-		Status:     a.Status,
-		CreatedAt:  a.CreatedAt.Time.Format("2006-01-02T15:04:05Z07:00"),
+		ID:                  a.ID,
+		GeofenceID:          a.GeofenceID,
+		VehicleID:           a.VehicleID,
+		EventType:           a.EventType,
+		Severity:            a.Severity,
+		NotifyViaWebsocket:  a.NotifyViaWebsocket,
+		Status:              a.Status,
+		CreatedAt:           a.CreatedAt.Time.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }
 
@@ -55,6 +63,6 @@ type AlertEvent struct {
 }
 
 type WebSocketMessage struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data"`
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
 }

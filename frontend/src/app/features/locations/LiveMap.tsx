@@ -59,7 +59,7 @@ export function LiveMap() {
   const recentEvents: GeofenceEventInfo[] = liveAlerts
     .slice(0, 10)
     .map(a => ({
-      geofence_id: a.geofenceName,
+      geofence_id: a.geofenceId,
       geofence_name: a.geofenceName,
       category: a.category,
       event_type: a.eventType,

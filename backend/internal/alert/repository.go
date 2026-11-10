@@ -19,15 +19,20 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 func (r *Repository) Create(ctx context.Context, a *AlertRule) error {
 	query := `
-		INSERT INTO alert_rules (geofence_id, vehicle_id, event_type, status)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO alert_rules (geofence_id, vehicle_id, event_type, severity, notify_via_websocket, status)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at
 	`
 	var vehicleID any = nil
 	if a.VehicleID != nil {
 		vehicleID = *a.VehicleID
 	}
-	err := r.pool.QueryRow(ctx, query, a.GeofenceID, vehicleID, a.EventType, a.Status).
+	severity := a.Severity
+	if severity == "" {
+		severity = "medium"
+	}
+	notifyViaWebsocket := a.NotifyViaWebsocket
+	err := r.pool.QueryRow(ctx, query, a.GeofenceID, vehicleID, a.EventType, severity, notifyViaWebsocket, a.Status).
 		Scan(&a.ID, &a.CreatedAt)
 	return err
 }
@@ -40,7 +45,7 @@ func (r *Repository) List(ctx context.Context, limit, offset int) ([]*AlertRule,
 	}
 
 	query := `
-		SELECT id, geofence_id, vehicle_id, event_type, status, created_at
+		SELECT id, geofence_id, vehicle_id, event_type, severity, notify_via_websocket, status, created_at
 		FROM alert_rules
 		WHERE status = 'active'
 		ORDER BY created_at DESC
@@ -56,7 +61,7 @@ func (r *Repository) List(ctx context.Context, limit, offset int) ([]*AlertRule,
 	for rows.Next() {
 		var a AlertRule
 		var vehicleID pgtype.UUID
-		if err := rows.Scan(&a.ID, &a.GeofenceID, &vehicleID, &a.EventType, &a.Status, &a.CreatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.GeofenceID, &vehicleID, &a.EventType, &a.Severity, &a.NotifyViaWebsocket, &a.Status, &a.CreatedAt); err != nil {
 			return nil, 0, err
 		}
 		if vehicleID.Valid {
@@ -70,7 +75,7 @@ func (r *Repository) List(ctx context.Context, limit, offset int) ([]*AlertRule,
 
 func (r *Repository) GetMatchingRules(ctx context.Context, geofenceID uuid.UUID, vehicleID uuid.UUID, eventType string) ([]*AlertRule, error) {
 	query := `
-		SELECT id, geofence_id, vehicle_id, event_type, status, created_at
+		SELECT id, geofence_id, vehicle_id, event_type, severity, notify_via_websocket, status, created_at
 		FROM alert_rules
 		WHERE geofence_id = $1
 		AND status = 'active'
@@ -87,7 +92,7 @@ func (r *Repository) GetMatchingRules(ctx context.Context, geofenceID uuid.UUID,
 	for rows.Next() {
 		var a AlertRule
 		var vehicleID pgtype.UUID
-		if err := rows.Scan(&a.ID, &a.GeofenceID, &vehicleID, &a.EventType, &a.Status, &a.CreatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.GeofenceID, &vehicleID, &a.EventType, &a.Severity, &a.NotifyViaWebsocket, &a.Status, &a.CreatedAt); err != nil {
 			return nil, err
 		}
 		if vehicleID.Valid {

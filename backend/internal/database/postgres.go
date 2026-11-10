@@ -87,9 +87,15 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			geofence_id UUID NOT NULL REFERENCES geofences(id) ON DELETE CASCADE,
 			vehicle_id UUID REFERENCES vehicles(id) ON DELETE CASCADE,
 			event_type VARCHAR(20) NOT NULL CHECK (event_type IN ('entry', 'exit', 'both')),
+			severity VARCHAR(20) NOT NULL DEFAULT 'medium' CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+			notify_via_websocket BOOLEAN NOT NULL DEFAULT TRUE,
 			status VARCHAR(50) NOT NULL DEFAULT 'active',
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);`,
+
+		// Add columns if they don't exist (for existing tables)
+		`ALTER TABLE alert_rules ADD COLUMN IF NOT EXISTS severity VARCHAR(20) NOT NULL DEFAULT 'medium' CHECK (severity IN ('low', 'medium', 'high', 'critical'));`,
+		`ALTER TABLE alert_rules ADD COLUMN IF NOT EXISTS notify_via_websocket BOOLEAN NOT NULL DEFAULT TRUE;`,
 
 		`CREATE INDEX IF NOT EXISTS idx_alert_rules_geofence_id ON alert_rules(geofence_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_alert_rules_vehicle_id ON alert_rules(vehicle_id);`,

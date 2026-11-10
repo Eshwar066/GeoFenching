@@ -124,9 +124,16 @@ func (s *Service) UpdateLocation(ctx context.Context, req UpdateLocationRequest)
 	}
 
 	slog.Info("Location update - events to save", "count", len(eventsToSave), "publisher", s.eventPublisher != nil)
+	if len(eventsToSave) > 0 {
+		for _, e := range eventsToSave {
+			slog.Info("Event to publish", "vehicle_id", e.VehicleID, "geofence_id", e.GeofenceID, "event_type", e.EventType)
+		}
+	}
 	if len(eventsToSave) > 0 && s.eventPublisher != nil {
 		slog.Info("Publishing events to alert service", "count", len(eventsToSave))
 		go s.eventPublisher.Publish(eventsToSave)
+	} else if len(eventsToSave) > 0 && s.eventPublisher == nil {
+		slog.Warn("No event publisher configured, events will not be sent to alert service")
 	}
 
 	geofenceIDs := make([]uuid.UUID, 0, len(containingGeofences))

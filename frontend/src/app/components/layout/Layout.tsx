@@ -55,16 +55,15 @@ export function Layout() {
         />
       )}
 
-      {(showLiveAlerts || unackedCount > 0) && (
-        <LiveAlertsPortal
-          alerts={alerts}
-          onAcknowledge={acknowledge}
-          onDismiss={dismiss}
-          isOpen={showLiveAlerts}
-          onClose={handleCloseLiveAlerts}
-          triggerRef={bellRef}
-        />
-      )}
+      {/* Always render the portal so WebSocket connects, but it will only show when isOpen or there are unacked alerts */}
+      <LiveAlertsPortal
+        alerts={alerts}
+        onAcknowledge={acknowledge}
+        onDismiss={dismiss}
+        isOpen={showLiveAlerts || unackedCount > 0}
+        onClose={handleCloseLiveAlerts}
+        triggerRef={bellRef}
+      />
     </div>
   );
 }

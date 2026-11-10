@@ -47,11 +47,18 @@ func (s *Service) Create(ctx context.Context, req CreateAlertRuleRequest) (*Aler
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
+	severity := req.Severity
+	if severity == "" {
+		severity = "medium"
+	}
+
 	a := &AlertRule{
-		GeofenceID: req.GeofenceID,
-		VehicleID:  req.VehicleID,
-		EventType:  req.EventType,
-		Status:     "active",
+		GeofenceID:            req.GeofenceID,
+		VehicleID:             req.VehicleID,
+		EventType:             req.EventType,
+		Severity:              severity,
+		NotifyViaWebsocket:    req.NotifyViaWebsocket,
+		Status:                "active",
 	}
 
 	if err := s.repo.Create(ctx, a); err != nil {
@@ -77,6 +84,9 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *Service) Publish(events []location.GeofenceEvent) {
 	slog.Info("AlertService.Publish called", "event_count", len(events))
+	for _, e := range events {
+		slog.Info("Received event for processing", "vehicle_id", e.VehicleID, "geofence_id", e.GeofenceID, "event_type", e.EventType)
+	}
 	alertEvents := make([]GeofenceEvent, len(events))
 	for i, e := range events {
 		alertEvents[i] = GeofenceEvent{
@@ -114,10 +124,14 @@ func (s *Service) processEvents(ctx context.Context, events []GeofenceEvent) {
 	for _, e := range events {
 		rules, err := s.repo.GetMatchingRules(ctx, e.GeofenceID, e.VehicleID, e.EventType)
 		if err != nil {
+			slog.Error("Failed to get matching rules", "error", err)
 			continue
 		}
 
+		slog.Info("Found matching rules", "geofence_id", e.GeofenceID, "vehicle_id", e.VehicleID, "event_type", e.EventType, "rule_count", len(rules))
+
 		if len(rules) == 0 {
+			slog.Info("No matching rules found", "geofence_id", e.GeofenceID, "vehicle_id", e.VehicleID, "event_type", e.EventType)
 			continue
 		}
 
@@ -135,25 +149,40 @@ func (s *Service) processEvents(ctx context.Context, events []GeofenceEvent) {
 			category = g.Category
 		}
 
-		alertMsg := AlertEvent{
-			ID:           uuid.New(),
-			VehicleID:     e.VehicleID,
-			VehicleNumber: vehicleNumber,
-			GeofenceID:    e.GeofenceID,
-			GeofenceName:  geofenceName,
-			EventType:     e.EventType,
-			Category:      category,
-			Severity:      "medium",
-			Latitude:      e.Latitude,
-			Longitude:     e.Longitude,
-			Timestamp:     time.Now().Format("2006-01-02T15:04:05Z07:00"),
-		}
+		// Send alerts for each matching rule
+		for _, rule := range rules {
+			// Only send WebSocket notification if enabled for this rule
+			if !rule.NotifyViaWebsocket {
+				slog.Info("Rule has notify_via_websocket disabled, skipping", "rule_id", rule.ID)
+				continue
+			}
 
-		msg := WebSocketMessage{
-			Type: "alert",
-			Data: alertMsg,
-		}
+			severity := rule.Severity
+			if severity == "" {
+				severity = "medium"
+			}
 
-		s.hub.Broadcast(msg)
+			alertMsg := AlertEvent{
+				ID:           uuid.New(),
+				VehicleID:     e.VehicleID,
+				VehicleNumber: vehicleNumber,
+				GeofenceID:    e.GeofenceID,
+				GeofenceName:  geofenceName,
+				EventType:     e.EventType,
+				Category:      category,
+				Severity:      severity,
+				Latitude:      e.Latitude,
+				Longitude:     e.Longitude,
+				Timestamp:     time.Now().Format("2006-01-02T15:04:05Z07:00"),
+			}
+
+			msg := WebSocketMessage{
+				Type:    "alert",
+				Payload: alertMsg,
+			}
+
+			slog.Info("Broadcasting alert via WebSocket", "vehicle_number", vehicleNumber, "geofence_name", geofenceName, "event_type", e.EventType)
+			s.hub.Broadcast(msg)
+		}
 	}
 }

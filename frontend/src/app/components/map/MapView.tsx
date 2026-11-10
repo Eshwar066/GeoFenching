@@ -196,11 +196,11 @@ function VehicleMarker({
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xl">{vehicle.vehicle_type === 'truck' ? '🚛' : vehicle.vehicle_type === 'bus' ? '🚌' : vehicle.vehicle_type === 'van' ? '🚐' : vehicle.vehicle_type === 'motorcycle' ? '🏍️' : '🚗'}</span>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{vehicle.vehicle_number}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{vehicle.driver_name}</p>
+              <h3 className="font-semibold text-primary-900 dark:text-primary-100">{vehicle.vehicle_number}</h3>
+              <p className="text-sm text-primary-700 dark:text-primary-300">{vehicle.driver_name}</p>
             </div>
           </div>
-          <div className="text-sm space-y-1">
+          <div className="text-sm space-y-1 text-primary-800 dark:text-primary-200">
             <p><span className="font-medium">Status:</span> <span className={cn('px-1.5 py-0.5 rounded-full text-xs', vehicle.status === 'active' ? 'bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300' : 'bg-gray-100 text-gray-700')}>{vehicle.status}</span></p>
             <p><span className="font-medium">Type:</span> {vehicle.vehicle_type}</p>
             <p><span className="font-medium">Phone:</span> {vehicle.phone}</p>
