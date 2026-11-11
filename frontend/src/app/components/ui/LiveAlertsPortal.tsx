@@ -59,17 +59,27 @@ function LiveAlertItem({
         <EventIcon className="h-5 w-5 text-primary-600" />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-start">
-          <span className="font-medium text-sm whitespace-nowrap truncate max-w-[180px]">{alert.vehicleNumber}</span>
-          <div className="hidden sm:flex items-center gap-1.5">
-            <span className="px-1.5 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300 whitespace-nowrap">
-              {isEntry ? 'ENTERED' : 'EXITED'}
-            </span>
-            <span className="px-1.5 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300 whitespace-nowrap">
-              {alert.category}
-            </span>
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+        {/* First row: Vehicle number and close button */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="font-medium text-sm whitespace-nowrap truncate">{alert.vehicleNumber}</span>
+          <button
+            onClick={() => onDismiss(alert.id)}
+            className="p-1 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Second row: Tags and action buttons - wraps to next line on mobile */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="px-1.5 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300 whitespace-nowrap">
+            {isEntry ? 'ENTERED' : 'EXITED'}
+          </span>
+          <span className="px-1.5 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700 dark:bg-primary-800/50 dark:text-primary-300 whitespace-nowrap">
+            {alert.category}
+          </span>
+          <div className="flex items-center gap-1.5 ml-auto">
             {!alert.acknowledged && (
               <button
                 onClick={() => onAcknowledge(alert.id)}
@@ -78,13 +88,6 @@ function LiveAlertItem({
                 Acknowledge
               </button>
             )}
-            <button
-              onClick={() => onDismiss(alert.id)}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Dismiss"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </div>
         </div>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 truncate">
