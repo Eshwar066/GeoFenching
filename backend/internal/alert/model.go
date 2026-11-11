@@ -25,7 +25,7 @@ type CreateAlertRuleRequest struct {
 }
 
 type AlertRuleResponse struct {
-	AlertID             uuid.UUID  `json:"alert_id"`
+	ID                  uuid.UUID  `json:"id"`
 	GeofenceID          uuid.UUID  `json:"geofence_id"`
 	VehicleID           *uuid.UUID `json:"vehicle_id,omitempty"`
 	EventType           string     `json:"event_type"`
@@ -37,7 +37,7 @@ type AlertRuleResponse struct {
 
 func (a *AlertRule) ToResponse() AlertRuleResponse {
 	return AlertRuleResponse{
-		AlertID:             a.ID,
+		ID:                  a.ID,
 		GeofenceID:          a.GeofenceID,
 		VehicleID:           a.VehicleID,
 		EventType:           a.EventType,
