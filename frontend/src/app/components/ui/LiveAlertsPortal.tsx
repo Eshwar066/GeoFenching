@@ -1,8 +1,7 @@
 import { Fragment, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, X, MapPin, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Bell, X, MapPin, AlertTriangle, CheckCircle } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
-import type { WebSocketAlert } from '@/app/lib/types';
 
 interface LiveAlert {
   id: string;
@@ -250,22 +249,11 @@ export function LiveAlertsPortal({
 export function useLiveAlerts() {
   const [alerts, setAlerts] = useState<LiveAlert[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isConnectingRef = useRef(false);
 
-  const addAlert = (payload: WebSocketAlert['payload']) => {
-    const newAlert: LiveAlert = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      vehicleNumber: payload.vehicle_number,
-      geofenceId: payload.geofence_id,
-      geofenceName: payload.geofence_name,
-      eventType: payload.event_type,
-      category: payload.category,
-      severity: payload.severity,
-      timestamp: payload.timestamp,
-      acknowledged: false,
-    };
-    setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
+  const addAlert = (alert: LiveAlert) => {
+    setAlerts((prev) => [alert, ...prev].slice(0, 50));
   };
 
   const connect = useCallback(() => {
@@ -274,7 +262,8 @@ export function useLiveAlerts() {
     }
 
     isConnectingRef.current = true;
-    // Use the same host as the current page for WebSocket
+    // Use relative path that works through both Vite dev proxy and nginx production proxy
+    // Both are configured to forward /ws/alerts to the backend WebSocket server
     const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/alerts`;
 
     try {
@@ -290,9 +279,21 @@ export function useLiveAlerts() {
         try {
           const data = JSON.parse(event.data);
           console.log('WebSocket message received:', data);
-          if (data.type === 'alert' && data.payload) {
-            console.log('Alert payload:', data.payload);
-            addAlert(data.payload);
+          if (data.event_id) {
+            // Transform to LiveAlert format
+            const alert: LiveAlert = {
+              id: data.event_id,
+              vehicleNumber: data.vehicle?.vehicle_number || '',
+              geofenceId: data.geofence?.geofence_id || '',
+              geofenceName: data.geofence?.geofence_name || '',
+              eventType: data.event_type as 'entry' | 'exit',
+              category: data.geofence?.category || '',
+              severity: 'medium',
+              timestamp: data.timestamp,
+              acknowledged: false,
+            };
+            console.log('Alert:', alert);
+            addAlert(alert);
           }
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);

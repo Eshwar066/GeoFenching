@@ -73,9 +73,9 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	middleware.WriteSuccess(w, r, map[string]any{
-		"violations": resp,
-		"total":      total,
-		"limit":      limit,
-		"offset":     offset,
+		"violations":  resp,
+		"total_count": total,
+		"limit":       limit,
+		"offset":      offset,
 	})
 }

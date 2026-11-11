@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, Truck, Search, RefreshCw } from 'lucide-react';
-import { cn } from '@/app/lib/utils/cn';
 import { api } from '@/app/lib/api/client';
 import { useCreateVehicle, useUpdateVehicleStatus } from '@/app/lib/api/hooks';
 import { Modal } from '@/app/components/ui/Modal';

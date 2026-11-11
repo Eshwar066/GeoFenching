@@ -274,6 +274,7 @@ export function LiveMap() {
             selectedVehicle={selectedVehicle || undefined}
             currentLocation={currentLocation || undefined}
             recentEvents={showEvents ? recentEvents : []}
+            autoCenter={autoCenter}
             onVehicleClick={handleVehicleClick}
             onGeofenceClick={handleGeofenceClick}
             onMapClick={handleMapClick}

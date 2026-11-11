@@ -18,10 +18,10 @@ func NewHandler(service *Service, hub *Hub) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
+	// REST API routes
 	r.Post("/alerts/configure", h.Create)
 	r.Get("/alerts", h.List)
 	r.Delete("/alerts/{id}", h.Delete)
-	r.Get("/ws/alerts", h.HandleWebSocket)
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {

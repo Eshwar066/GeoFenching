@@ -1,178 +1,399 @@
-# Geofencing System - Setup Guide
+# GeoFencing System - Setup Guide
 
 ## Prerequisites
 
-- Go 1.23+
-- PostgreSQL 16 with PostGIS 3.4+
-- Docker & Docker Compose (optional, for containerized deployment)
+- **Go 1.21+** (for backend)
+- **Node.js 18+** (for frontend)
+- **PostgreSQL 15+** with **PostGIS 3.3+** extension
+- **Docker & Docker Compose** (for containerized deployment)
 
-## Quick Start (Local Development)
+---
 
-### 1. Start PostgreSQL with PostGIS
+## Local Development Setup
 
+### 1. Database Setup
 
 ```bash
-eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+# Start PostgreSQL with PostGIS using Docker
+docker run --name geofencing-db \
+  -e POSTGRES_DB=geofencing \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  -d postgis/postgis:15-3.3
 
-docker-compose up -d postgres
+# Verify PostGIS is enabled
+docker exec -it geofencing-db psql -U postgres -d geofencing -c "SELECT PostGIS_Version();"
 ```
 
-Or install PostgreSQL locally and enable PostGIS:
-```sql
-CREATE EXTENSION postgis;
-CREATE EXTENSION "uuid-ossp";
-```
-
-### 2. Configure Environment
+### 2. Backend Setup
 
 ```bash
 cd backend
+
+# Install dependencies
+go mod download
+
+# Copy environment template
 cp .env.example .env
 # Edit .env with your database credentials
+
+# Run the server
+go run cmd/api/main.go
+
+# Server starts at http://localhost:8080
 ```
 
-### 3. Run the Backend
+#### Environment Variables (.env)
+```env
+SERVER_PORT=8080
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=geofencing
+DB_SSL_MODE=disable
+```
+
+### 3. Frontend Setup
 
 ```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Copy environment template
+cp .env.example .env
+# Edit with your API URL
+
+# Start development server
+npm run dev
+
+# Frontend runs at http://localhost:5173
+```
+
+#### Environment Variables (.env)
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
+VITE_WS_URL=ws://localhost:8080/ws/alerts
+```
+
+---
+
+## Docker Compose Setup
+
+### 1. Start All Services
+
+```bash
+# From project root
+docker-compose up -d --build
+
+# Services:
+# - postgres: PostgreSQL + PostGIS (port 5432)
+# - backend: Go API (port 8080)
+# - frontend: Vite dev server (port 5173)
+```
+
+### 2. Docker Compose Services
+
+```yaml
+# docker-compose.yml
+services:
+  postgres:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_DB: geofencing
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=geofencing
+      - DB_SSL_MODE=disable
+      - SERVER_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: ["go", "run", "cmd/api/main.go"]
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api
+      - VITE_WS_URL=ws://localhost:8080/ws/alerts
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: ["npm", "run", "dev", "--", "--host"]
+
+volumes:
+  postgres_data:
+```
+
+### 3. Production Build
+
+```bash
+# Build backend image
 cd backend
-go run ./cmd/api
+docker build -t geofencing-backend .
+
+# Build frontend for production
+cd frontend
+npm run build
+# Output in dist/ - deploy to Vercel/Netlify
 ```
 
-The server will start on `http://localhost:8080`
+---
 
-### 4. Test the API
+## API Testing with cURL
 
+### Health Check
 ```bash
-# Health check
 curl http://localhost:8080/health
+```
 
-# Create a geofence
-curl -X POST http://localhost:8080/geofences \
+### Geofences
+```bash
+# Create geofence
+curl -X POST http://localhost:8080/api/geofences \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Restricted Zone",
-    "description": "Test restricted area",
+    "name": "Downtown Zone",
+    "description": "Main delivery area",
     "coordinates": [
-      [12.9710, 77.5900],
-      [12.9810, 77.5900],
-      [12.9810, 77.6000],
-      [12.9710, 77.6000],
-      [12.9710, 77.5900]
+      [37.7749, -122.4194],
+      [37.7849, -122.4194],
+      [37.7849, -122.4094],
+      [37.7749, -122.4094],
+      [37.7749, -122.4194]
     ],
-    "category": "restricted_zone"
+    "category": "delivery_zone"
   }'
 
-# Register a vehicle
-curl -X POST http://localhost:8080/vehicles \
+# List geofences
+curl http://localhost:8080/api/geofences
+
+# Filter by category
+curl "http://localhost:8080/api/geofences?category=delivery_zone"
+```
+
+### Vehicles
+```bash
+# Register vehicle
+curl -X POST http://localhost:8080/api/vehicles \
   -H "Content-Type: application/json" \
   -d '{
     "vehicle_number": "KA-01-AB-1234",
     "driver_name": "John Doe",
     "vehicle_type": "truck",
-    "phone": "+919876543210"
+    "phone": "+1234567890"
   }'
 
-# Update vehicle location (outside geofence)
-curl -X POST http://localhost:8080/vehicles/location \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vehicle_id": "<VEHICLE_ID>",
-    "latitude": 12.9650,
-    "longitude": 77.5850
-  }'
-
-# Update vehicle location (inside geofence - triggers entry event)
-curl -X POST http://localhost:8080/vehicles/location \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vehicle_id": "<VEHICLE_ID>",
-    "latitude": 12.9750,
-    "longitude": 77.5950
-  }'
+# List vehicles
+curl http://localhost:8080/api/vehicles
 ```
 
-### 5. WebSocket Connection
-
-Connect to `ws://localhost:8080/ws/alerts` to receive real-time alerts.
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /health | Health check |
-| POST | /geofences | Create geofence |
-| GET | /geofences | List geofences (filter: category) |
-| GET | /geofences/{id} | Get geofence by ID |
-| POST | /vehicles | Register vehicle |
-| GET | /vehicles | List vehicles |
-| GET | /vehicles/{id} | Get vehicle by ID |
-| PATCH | /vehicles/{id}/status | Update vehicle status |
-| POST | /vehicles/location | Update location & detect events |
-| GET | /vehicles/location/{vehicle_id} | Get current location & geofence state |
-| POST | /alerts/configure | Configure alert rule |
-| GET | /alerts | List alert rules |
-| GET | /ws/alerts | WebSocket for live alerts |
-| GET | /violations/history | Get violation history (filters: vehicle_id, geofence_id, event_type, start_date, end_date) |
-
-## Docker Deployment
-
+### Location Updates
 ```bash
-docker-compose up -d --build
+# Update vehicle location
+curl -X POST http://localhost:8080/api/vehicles/location \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vehicle_id": "VEHICLE_ID_HERE",
+    "latitude": 37.7849,
+    "longitude": -122.4194,
+    "timestamp": "2025-01-15T10:35:00Z"
+  }'
+
+# Get current location
+curl http://localhost:8080/api/vehicles/location/VEHICLE_ID_HERE
 ```
 
-## Project Structure
+### Alerts
+```bash
+# Configure alert
+curl -X POST http://localhost:8080/api/alerts/configure \
+  -H "Content-Type: application/json" \
+  -d '{
+    "geofence_id": "GEOFENCE_ID_HERE",
+    "vehicle_id": "VEHICLE_ID_HERE",
+    "event_type": "entry"
+  }'
 
-```
-geofencing-system/
-├── backend/
-│   ├── cmd/api/          # Main entry point
-│   ├── internal/
-│   │   ├── config/       # Configuration
-│   │   ├── database/     # Database connection & migrations
-│   │   ├── middleware/   # HTTP middleware
-│   │   ├── geofence/     # Geofence CRUD
-│   │   ├── vehicle/      # Vehicle CRUD
-│   │   ├── location/     # Location tracking & geofence detection
-│   │   ├── alert/        # Alert rules & WebSocket
-│   │   └── violation/    # Violation history
-│   ├── Dockerfile
-│   ├── go.mod
-│   └── .env.example
-├── docker-compose.yml
-└── SETUP.md
+# List alerts
+curl http://localhost:8080/api/alerts
 ```
 
-## Architecture
+### Violations History
+```bash
+# Get violations with filters
+curl "http://localhost:8080/api/violations/history?vehicle_id=VEHICLE_ID&limit=50"
 
-- **Handler** → HTTP request/response
-- **Service** → Business logic
-- **Repository** → Database operations
-- **Model** → Domain structures
-- **Middleware** → Common HTTP behavior
-
-## Geofence Detection Logic
-
-1. On location update, fetch previous geofence membership
-2. Find all geofences containing the new location (PostGIS `ST_Covers`)
-3. Compare: `entered = current - previous`, `exited = previous - current`
-4. Save location, update membership, create events in single transaction
-5. Match events against alert rules, broadcast via WebSocket
-
-## Response Format
-
-All responses include `time_ns` (nanoseconds since handler start):
-
-```json
-{
-  "data": {...},
-  "time_ns": "1234567"
-}
+# With date range
+curl "http://localhost:8080/api/violations/history?start_date=2025-01-01T00:00:00Z&end_date=2025-01-31T23:59:59Z"
 ```
 
-Errors:
-```json
-{
-  "error": "description",
-  "time_ns": "1234567"
-}
+### WebSocket Test
+```bash
+# Using wscat (install: npm install -g wscat)
+wscat -c ws://localhost:8080/ws/alerts
 ```
+
+---
+
+## Frontend Usage Guide
+
+### 1. Dashboard
+- Overview of active vehicles, geofences, unacknowledged alerts, recent events
+- Quick stats at a glance
+
+### 2. Geofences Page
+- **Create**: Click "New Geofence" → Fill form → Draw polygon on map or enter coordinates
+- **List**: View all geofences with category filter
+- **Map**: Visualize geofence boundaries as polygons
+
+### 3. Vehicles Page
+- **Register**: Click "Register Vehicle" → Fill details
+- **List**: View all vehicles with status filter
+- **Status**: Change vehicle status (active/inactive/maintenance) inline
+
+### 4. Live Map
+- **Select Vehicle**: Click a vehicle from sidebar
+- **Update Location**: Click on map to simulate location update
+- **Real-time**: See vehicle markers and geofence boundaries
+- **Events**: Entry/exit events shown as markers
+
+### 5. Alerts Page
+- **Configure**: Create alert rules (geofence + vehicle + event type)
+- **Live Feed**: Real-time alerts appear in top-right panel
+- **Manage**: Acknowledge/dismiss alerts
+
+### 6. Violations History
+- **Filters**: Vehicle, geofence, event type, date range
+- **Pagination**: Navigate through history
+- **Export**: Download CSV
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Frontend   │◀───▶│   Backend   │◀───▶│  Database   │
+│  (React)    │  WS  │    (Go)     │     │  (Postgres) │
+└─────────────┘  /HTTP└─────────────┘  +PostGIS    └─────────────┘
+```
+
+### Backend Structure
+```
+backend/
+├── cmd/api/main.go           # Entry point
+├── internal/
+│   ├── config/               # Configuration
+│   ├── database/             # DB connection & migrations
+│   ├── middleware/           # HTTP middleware (timing, CORS, logging)
+│   ├── geofence/             # Geofence CRUD + PostGIS queries
+│   ├── vehicle/              # Vehicle CRUD
+│   ├── location/             # Location updates + point-in-polygon
+│   ├── alert/                # Alert rules + WebSocket hub
+│   └── violation/            # Historical events
+```
+
+### Key Algorithms
+- **Point-in-Polygon**: PostGIS `ST_Covers(geofence.boundary, ST_MakePoint(lng, lat))`
+- **Entry/Exit Detection**: Compare previous vs current geofence states
+- **Real-time Alerts**: WebSocket hub broadcasts to all connected clients
+
+---
+
+## Troubleshooting
+
+### Database Connection Issues
+```bash
+# Check if PostGIS is enabled
+docker exec -it geofencing-db psql -U postgres -d geofencing -c "SELECT PostGIS_Version();"
+
+# Check migrations
+docker exec -it geofencing-db psql -U postgres -d geofencing -c "\dt"
+```
+
+### WebSocket Not Connecting
+- Ensure backend is running on port 8080
+- Check browser console for CORS errors
+- Verify `VITE_WS_URL` in frontend .env
+
+### Location Not Updating
+- Check vehicle exists: `GET /api/vehicles`
+- Verify coordinates are valid (lat: -90 to 90, lng: -180 to 180)
+- Check backend logs for point-in-polygon errors
+
+---
+
+## Deployment Checklist
+
+### Backend (Docker)
+- [ ] Build: `docker build -t geofencing-backend ./backend`
+- [ ] Push to registry: `docker push your-registry/geofencing-backend`
+- [ ] Deploy to: Railway, Render, Fly.io, ECS, Cloud Run, etc.
+- [ ] Set environment variables
+- [ ] Configure managed PostgreSQL + PostGIS
+
+### Frontend (Vercel/Netlify)
+- [ ] Connect GitHub repo
+- [ ] Build command: `npm run build`
+- [ ] Output directory: `dist`
+- [ ] Environment variables: `VITE_API_BASE_URL`, `VITE_WS_URL`
+- [ ] Deploy
+
+---
+
+## Video Demo Checklist
+
+### App Demo (10-12 min)
+- [ ] Create geofence on map
+- [ ] Register vehicle
+- [ ] Update location to trigger entry event
+- [ ] Show real-time alert arriving
+- [ ] View violation history with filters
+- [ ] Show Docker Compose running locally
+
+### Implementation Deep Dive (12-18 min)
+- [ ] Project structure walkthrough
+- [ ] Go backend architecture
+- [ ] Geospatial point-in-polygon logic
+- [ ] WebSocket alert delivery
+- [ ] Database schema
+- [ ] React frontend structure
+
+### Gaps & Roadmap (10-15 min)
+- [ ] Edge cases not handled
+- [ ] Production readiness items
+- [ ] Scaling to thousands of vehicles
+- [ ] What you'd refactor
+
+---
+
+## Support
+
+For questions, refer to the assessment requirements or check the GitHub issues.

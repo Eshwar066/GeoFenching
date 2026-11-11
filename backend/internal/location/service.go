@@ -149,14 +149,15 @@ func (s *Service) UpdateLocation(ctx context.Context, req UpdateLocationRequest)
 	}
 
 	return &LocationResponse{
-		VehicleID:     req.VehicleID,
-		Latitude:      req.Latitude,
-		Longitude:     req.Longitude,
-		GeofenceIDs:   geofenceIDs,
-		GeofenceNames: geofenceNames,
-		Entered:       entered,
-		Exited:        exited,
-		RecordedAt:    recordedAt.Format("2006-01-02T15:04:05Z07:00"),
+		VehicleID:       req.VehicleID,
+		Latitude:        req.Latitude,
+		Longitude:       req.Longitude,
+		GeofenceIDs:     geofenceIDs,
+		GeofenceNames:   geofenceNames,
+		Entered:         entered,
+		Exited:          exited,
+		RecordedAt:      recordedAt.Format("2006-01-02T15:04:05Z07:00"),
+		LocationUpdated: true,
 	}, nil
 }
 

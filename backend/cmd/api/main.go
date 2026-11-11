@@ -67,17 +67,24 @@ func main() {
 		middlewareApp.WriteSuccess(w, r, map[string]string{"status": "ok"})
 	})
 
-	geofenceHandler := geofence.NewHandler(geofenceService)
-	vehicleHandler := vehicle.NewHandler(vehicleService)
-	locationHandler := location.NewHandler(locationService)
-	alertHandler := alert.NewHandler(alertService, wsHub)
-	violationHandler := violation.NewHandler(violationService)
+	// Mount all API routes under /api
+	r.Route("/api", func(r chi.Router) {
+		geofenceHandler := geofence.NewHandler(geofenceService)
+		vehicleHandler := vehicle.NewHandler(vehicleService)
+		locationHandler := location.NewHandler(locationService)
+		alertHandler := alert.NewHandler(alertService, wsHub)
+		violationHandler := violation.NewHandler(violationService)
 
-	geofenceHandler.RegisterRoutes(r)
-	vehicleHandler.RegisterRoutes(r)
-	locationHandler.RegisterRoutes(r)
-	alertHandler.RegisterRoutes(r)
-	violationHandler.RegisterRoutes(r)
+		geofenceHandler.RegisterRoutes(r)
+		vehicleHandler.RegisterRoutes(r)
+		locationHandler.RegisterRoutes(r)
+		alertHandler.RegisterRoutes(r)
+		violationHandler.RegisterRoutes(r)
+	})
+
+	// WebSocket route - must be at root level to match nginx proxy
+	alertHandler := alert.NewHandler(alertService, wsHub)
+	r.Get("/ws/alerts", alertHandler.HandleWebSocket)
 
 	server := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

@@ -41,13 +41,14 @@ interface MapViewProps {
   recentEvents?: GeofenceEventInfo[];
   center?: [number, number];
   zoom?: number;
+  autoCenter?: boolean;
   onVehicleClick?: (vehicle: Vehicle) => void;
   onGeofenceClick?: (geofence: Geofence) => void;
   onMapClick?: (latLng: [number, number], vehicleId: string) => void;
 }
 
 const DEFAULT_CENTER: [number, number] = [12.9716, 77.5946];
-const DEFAULT_ZOOM = 13;
+const DEFAULT_ZOOM = 15;
 
 const categoryColors: Record<string, { fill: string; border: string }> = {
   restricted_zone: { fill: '#fee2e2', border: '#dc2626' },
@@ -268,6 +269,7 @@ export function MapView({
   recentEvents = [],
   center = DEFAULT_CENTER,
   zoom = DEFAULT_ZOOM,
+  autoCenter = false,
   onVehicleClick,
   onGeofenceClick,
   onMapClick,
@@ -277,6 +279,7 @@ export function MapView({
   const [mapZoom, setMapZoom] = useState(zoom);
   const [selectedGeofenceId, setSelectedGeofenceId] = useState<string | null>(null);
   const [simulateLocation, setSimulateLocation] = useState<[number, number] | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const bounds = useMemo(() => {
     const allCoords: [number, number][] = [];
@@ -292,10 +295,11 @@ export function MapView({
   }, [geofences, vehicles, selectedVehicle, currentLocation, simulateLocation]);
 
   useEffect(() => {
-    if (bounds && mapRef.current) {
+    if (bounds && mapRef.current && (autoCenter || isInitialLoad)) {
       mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+      setIsInitialLoad(false);
     }
-  }, [bounds]);
+  }, [bounds, autoCenter]);
 
   const handleMapReady = () => {
     if (mapRef.current) {

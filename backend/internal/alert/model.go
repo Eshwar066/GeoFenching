@@ -25,7 +25,7 @@ type CreateAlertRuleRequest struct {
 }
 
 type AlertRuleResponse struct {
-	ID                  uuid.UUID  `json:"id"`
+	AlertID             uuid.UUID  `json:"alert_id"`
 	GeofenceID          uuid.UUID  `json:"geofence_id"`
 	VehicleID           *uuid.UUID `json:"vehicle_id,omitempty"`
 	EventType           string     `json:"event_type"`
@@ -37,7 +37,7 @@ type AlertRuleResponse struct {
 
 func (a *AlertRule) ToResponse() AlertRuleResponse {
 	return AlertRuleResponse{
-		ID:                  a.ID,
+		AlertID:             a.ID,
 		GeofenceID:          a.GeofenceID,
 		VehicleID:           a.VehicleID,
 		EventType:           a.EventType,
@@ -62,7 +62,28 @@ type AlertEvent struct {
 	Timestamp    string    `json:"timestamp"`
 }
 
+type VehicleInfo struct {
+	VehicleID     uuid.UUID `json:"vehicle_id"`
+	VehicleNumber string    `json:"vehicle_number"`
+	DriverName    string    `json:"driver_name"`
+}
+
+type GeofenceInfo struct {
+	GeofenceID   uuid.UUID `json:"geofence_id"`
+	GeofenceName string    `json:"geofence_name"`
+	Category     string    `json:"category"`
+}
+
+type LocationInfo struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
 type WebSocketMessage struct {
-	Type    string      `json:"type"`
-	Payload interface{} `json:"payload"`
+	EventID   string      `json:"event_id"`
+	EventType string      `json:"event_type"`
+	Timestamp string      `json:"timestamp"`
+	Vehicle   VehicleInfo `json:"vehicle"`
+	Geofence  GeofenceInfo `json:"geofence"`
+	Location  LocationInfo `json:"location"`
 }

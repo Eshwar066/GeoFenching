@@ -162,27 +162,37 @@ func (s *Service) processEvents(ctx context.Context, events []GeofenceEvent) {
 				severity = "medium"
 			}
 
-			alertMsg := AlertEvent{
-				ID:           uuid.New(),
+			// Get driver name for the vehicle
+		driverName := ""
+		if v != nil {
+			driverName = v.DriverName
+		}
+
+		timestamp := time.Now().Format("2006-01-02T15:04:05Z07:00")
+		eventID := fmt.Sprintf("evt_%s", uuid.New().String()[:8])
+
+		msg := WebSocketMessage{
+			EventID:   eventID,
+			EventType: e.EventType,
+			Timestamp: timestamp,
+			Vehicle: VehicleInfo{
 				VehicleID:     e.VehicleID,
 				VehicleNumber: vehicleNumber,
-				GeofenceID:    e.GeofenceID,
-				GeofenceName:  geofenceName,
-				EventType:     e.EventType,
-				Category:      category,
-				Severity:      severity,
-				Latitude:      e.Latitude,
-				Longitude:     e.Longitude,
-				Timestamp:     time.Now().Format("2006-01-02T15:04:05Z07:00"),
-			}
+				DriverName:    driverName,
+			},
+			Geofence: GeofenceInfo{
+				GeofenceID:   e.GeofenceID,
+				GeofenceName: geofenceName,
+				Category:     category,
+			},
+			Location: LocationInfo{
+				Latitude:  e.Latitude,
+				Longitude: e.Longitude,
+			},
+		}
 
-			msg := WebSocketMessage{
-				Type:    "alert",
-				Payload: alertMsg,
-			}
-
-			slog.Info("Broadcasting alert via WebSocket", "vehicle_number", vehicleNumber, "geofence_name", geofenceName, "event_type", e.EventType)
-			s.hub.Broadcast(msg)
+		slog.Info("Broadcasting alert via WebSocket", "vehicle_number", vehicleNumber, "geofence_name", geofenceName, "event_type", e.EventType)
+		s.hub.Broadcast(msg)
 		}
 	}
 }

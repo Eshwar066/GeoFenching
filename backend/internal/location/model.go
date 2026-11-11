@@ -13,14 +13,15 @@ type UpdateLocationRequest struct {
 }
 
 type LocationResponse struct {
-	VehicleID     uuid.UUID            `json:"vehicle_id"`
-	Latitude      float64              `json:"latitude"`
-	Longitude     float64              `json:"longitude"`
-	GeofenceIDs   []uuid.UUID          `json:"geofence_ids"`
-	GeofenceNames []string             `json:"geofence_names"`
-	Entered       []GeofenceEventInfo  `json:"entered"`
-	Exited        []GeofenceEventInfo  `json:"exited"`
-	RecordedAt    string               `json:"recorded_at"`
+	VehicleID       uuid.UUID            `json:"vehicle_id"`
+	Latitude        float64              `json:"latitude"`
+	Longitude       float64              `json:"longitude"`
+	GeofenceIDs     []uuid.UUID          `json:"geofence_ids"`
+	GeofenceNames   []string             `json:"geofence_names"`
+	Entered         []GeofenceEventInfo  `json:"entered"`
+	Exited          []GeofenceEventInfo  `json:"exited"`
+	RecordedAt      string               `json:"recorded_at"`
+	LocationUpdated bool                 `json:"location_updated"`
 }
 
 type GeofenceEventInfo struct {

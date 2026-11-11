@@ -1,36 +1,67 @@
+version: '3.8'
+
 services:
   postgres:
-    image: postgis/postgis:16-3.4
+    image: postgis/postgis:15-3.4
+    container_name: geofencing-db
+    platform: linux/amd64
     environment:
-      POSTGRES_USER: geouser
-      POSTGRES_PASSWORD: geopassword
       POSTGRES_DB: geofencing
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U geouser -d geofencing"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - geofencing-network
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: geofencing-backend
     ports:
       - "8080:8080"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=geouser
-      - DB_PASSWORD=geopassword
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
       - DB_NAME=geofencing
-      - DB_SSLMODE=disable
+      - DB_SSL_MODE=disable
       - SERVER_PORT=8080
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - geofencing-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: geofencing-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api
+      - VITE_WS_URL=ws://localhost:8080/ws/alerts
+    depends_on:
+      - backend
+    networks:
+      - geofencing-network
     restart: unless-stopped
 
 volumes:
   postgres_data:
+
+networks:
+  geofencing-network:
+    driver: bridge

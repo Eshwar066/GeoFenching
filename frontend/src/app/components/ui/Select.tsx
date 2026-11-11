@@ -1,4 +1,4 @@
-import { forwardRef, SelectHTMLAttributes, useRef, useState, useEffect, useId } from 'react';
+import { forwardRef, useRef, useState, useEffect, useId } from 'react';
 import { cn } from '@/app/lib/utils/cn';
 import { ChevronDown, Check } from 'lucide-react';
 
@@ -7,7 +7,7 @@ interface SelectOption {
   label: string;
 }
 
-interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange' | 'value' | 'defaultValue' | 'children'> {
+interface SelectProps {
   label?: string;
   error?: string;
   helperText?: string;
@@ -16,10 +16,14 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onC
   value?: string;
   onChange?: (value: string) => void;
   defaultValue?: string;
+  disabled?: boolean;
+  required?: boolean;
+  className?: string;
+  id?: string;
 }
 
 export const Select = forwardRef<HTMLDivElement, SelectProps>(
-  ({ className, label, error, helperText, options, placeholder, value, onChange, defaultValue, id, disabled, required, ...props }, ref) => {
+  ({ className, label, error, helperText, options, placeholder, value, onChange, defaultValue, id, disabled, required, ...restProps }: SelectProps, ref) => {
     const selectId = useId();
     const [isOpen, setIsOpen] = useState(false);
     const [selectedValue, setSelectedValue] = useState(value || defaultValue || '');
@@ -55,6 +59,9 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
     const selectedOption = options.find(opt => opt.value === selectedValue);
     const displayValue = selectedOption?.label || placeholder || '';
 
+    // Filter out props that don't belong on button element
+    const { required: _required, ...buttonProps } = restProps as Record<string, unknown>;
+
     return (
       <div className={cn('w-full', className)} ref={ref}>
         {label && (
@@ -69,7 +76,6 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
             type="button"
             id={generatedId}
             disabled={disabled}
-            required={required}
             aria-controls={`${generatedId}-listbox`}
             aria-activedescendant={isOpen && selectedValue ? `${generatedId}-option-${selectedValue}` : undefined}
             className={cn(
@@ -82,7 +88,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
               'transition-colors duration-150'
             )}
             onClick={() => !disabled && setIsOpen(!isOpen)}
-            {...props}
+            {...buttonProps}
           >
             <span className={cn('truncate flex-1', !selectedValue && 'text-gray-400 dark:text-gray-500')}>
               {displayValue}
