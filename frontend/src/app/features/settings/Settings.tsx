@@ -16,8 +16,8 @@ interface Settings {
 }
 
 const defaultSettings: Settings = {
-  apiBaseUrl: 'http://localhost:8080',
-  wsUrl: 'ws://localhost:8080/ws/alerts',
+  apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  wsUrl: import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws/alerts',
   autoRefreshInterval: 10000,
   enableNotifications: true,
   enableSound: false,
