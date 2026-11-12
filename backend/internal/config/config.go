@@ -34,9 +34,18 @@ type JWTConfig struct {
 }
 
 func Load() *Config {
+	// Render provides PORT; if not set, fall back to SERVER_PORT, then 8080
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = os.Getenv("SERVER_PORT")
+	}
+	if port == "" {
+		port = "8080"
+	}
+
 	return &Config{
 		Server: ServerConfig{
-			Port:         getEnv("SERVER_PORT", "8080"),
+			Port:         port,                     // ← now comes from PORT/SERVER_PORT/8080
 			ReadTimeout:  getDurationEnv("SERVER_READ_TIMEOUT", 10*time.Second),
 			WriteTimeout: getDurationEnv("SERVER_WRITE_TIMEOUT", 10*time.Second),
 			IdleTimeout:  getDurationEnv("SERVER_IDLE_TIMEOUT", 60*time.Second),
