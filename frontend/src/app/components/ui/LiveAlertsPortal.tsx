@@ -267,7 +267,7 @@ export function useLiveAlerts() {
     isConnectingRef.current = true;
     // Use relative path that works through both Vite dev proxy and nginx production proxy
     // Both are configured to forward /ws/alerts to the backend WebSocket server
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/alerts`;
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws/alerts';
 
     try {
       const ws = new WebSocket(wsUrl);
