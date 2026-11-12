@@ -14,7 +14,7 @@ func CORS(next http.Handler) http.Handler {
 	allowedRaw := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
 	if allowedRaw == "" || allowedRaw == "*" {
 		// Very permissive – only for local/dev testing
-		return func(w http.ResponseWriter, r *http.Request) {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Accept,Authorization,Content-Type,X-CSRF-Token")
@@ -23,7 +23,7 @@ func CORS(next http.Handler) http.Handler {
 				return
 			}
 			next.ServeHTTP(w, r)
-		}
+		})
 	}
 
 	// Build a slice of trimmed allowed origins
